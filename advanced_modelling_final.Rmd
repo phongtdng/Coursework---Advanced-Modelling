@@ -20,7 +20,7 @@ library(jsonlite)
 booking_data <- read.csv("data/NDAQ-CHB.csv") %>% 
   # Initial cleaning
   mutate(across(c(added_date, modified_date, created_date, check_in, check_out, cancel_date), as.Date)) %>% 
-  mutate(start_bed_type = gsub(",", "", start_bed_type))
+  mutate(start_bed_type = gsub(",", "", start_bed_type)) 
 ```
 
 Link to dataset: <https://data.nasdaq.com/databases/CHB>
@@ -34,7 +34,11 @@ data <- booking_data %>%
   mutate(free_wifi = ifelse(grepl("Free Wifi", start_amenities), 1,0),
          free_breakfast = ifelse(grepl("Free Breakfast", start_amenities), 1,0),
          free_parking = ifelse(grepl("Free Breakfast", start_amenities), 1,0),
-         concierge = ifelse(grepl("Concierge", start_amenities), 1,0))
+         concierge = ifelse(grepl("Concierge", start_amenities), 1,0),
+         amenities = free_wifi+free_breakfast+free_parking+concierge,
+         cancelled = ifelse(!is.na(cancel_date),1,0),
+         cancel_after_booking = as.numeric(cancel_date - created_date),
+         cancel_before_checkin = as.numeric(check_in - cancel_date))
 ```
 
 ## Feature Transformation
