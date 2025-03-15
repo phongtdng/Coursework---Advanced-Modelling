@@ -17,17 +17,23 @@ library(jsonlite)
 # Data
 
 ```{r}
-booking_data <- read.csv("data/NDAQ-CHB.csv") %>% 
+booking_data <- read.csv("data/NDAQ-CHB.csv")
+```
+
+Link to dataset: <https://data.nasdaq.com/databases/CHB>
+
+## Data Cleaning
+
+```{r}
+booking_data <- booking_data %>% 
   # Initial cleaning
   mutate(across(c(added_date, modified_date, created_date, check_in, check_out, cancel_date), as.Date)) %>% 
   mutate(start_bed_type = gsub(",", "", start_bed_type)) 
 ```
 
-Link to dataset: <https://data.nasdaq.com/databases/CHB>
+## Feature Engineering
 
-# Feature Engineering
-
-## Feature Creation
+### Feature Creation
 
 ```{r}
 data <- booking_data %>% 
@@ -42,6 +48,6 @@ data <- booking_data %>%
          leadtime = as.numeric(check_in - created_date))
 ```
 
-## Feature Transformation
+### Feature Transformation
 
-## Feature Selection
+### Feature Selection
