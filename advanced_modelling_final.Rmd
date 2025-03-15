@@ -14,16 +14,12 @@ library(tidyverse)
 library(jsonlite)
 ```
 
-```{r}
-text <- readLines("data/bici_202212.json")
-data <- map(text, fromJSON) 
+# Data
 
-id <- c()
-var <- data[[1]]$stations %>% 
-  filter(name == "Puerta del Sol A")
-for (i in 1:length(data)) {
-  id <- c(id, data[[i]]$`_id`)
-  var <- rbind(var, data[[i+1]]$stations %>% filter(name == "Puerta del Sol A"))  
-}
-df <- cbind(id, var)
+```{r}
+booking_data <- read.csv("data/NDAQ-CHB.csv") %>% 
+  # Initial cleaning
+  mutate(across(c(added_date, modified_date, created_date, check_in, check_out, cancel_date), as.Date)) 
 ```
+
+Link to dataset: <https://data.nasdaq.com/databases/CHB>
