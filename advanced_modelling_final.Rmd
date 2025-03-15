@@ -24,3 +24,19 @@ booking_data <- read.csv("data/NDAQ-CHB.csv") %>%
 ```
 
 Link to dataset: <https://data.nasdaq.com/databases/CHB>
+
+# Feature Engineering
+
+## Feature Creation
+
+```{r}
+data <- booking_data %>% 
+  mutate(free_wifi = ifelse(grepl("Free Wifi", start_amenities), 1,0),
+         free_breakfast = ifelse(grepl("Free Breakfast", start_amenities), 1,0),
+         free_parking = ifelse(grepl("Free Breakfast", start_amenities), 1,0),
+         concierge = ifelse(grepl("Concierge", start_amenities), 1,0))
+```
+
+## Feature Transformation
+
+## Feature Selection
