@@ -19,7 +19,8 @@ library(jsonlite)
 ```{r}
 booking_data <- read.csv("data/NDAQ-CHB.csv") %>% 
   # Initial cleaning
-  mutate(across(c(added_date, modified_date, created_date, check_in, check_out, cancel_date), as.Date)) 
+  mutate(across(c(added_date, modified_date, created_date, check_in, check_out, cancel_date), as.Date)) %>% 
+  mutate(start_bed_type = gsub(",", "", start_bed_type))
 ```
 
 Link to dataset: <https://data.nasdaq.com/databases/CHB>
