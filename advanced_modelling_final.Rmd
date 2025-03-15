@@ -1,0 +1,29 @@
+---
+title: "Advanced Modelling - Final Project"
+author: "Phong"
+date: "2025-03-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+```
+
+```{r}
+text <- readLines("data/bici_202212.json")
+data <- map(text, fromJSON) 
+
+id <- c()
+var <- data[[1]]$stations %>% 
+  filter(name == "Puerta del Sol A")
+for (i in 1:length(data)) {
+  id <- c(id, data[[i]]$`_id`)
+  var <- rbind(var, data[[i+1]]$stations %>% filter(name == "Puerta del Sol A"))  
+}
+df <- cbind(id, var)
+```
