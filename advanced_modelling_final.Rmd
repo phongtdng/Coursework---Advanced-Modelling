@@ -78,6 +78,27 @@ booking_data %>%
 
 There are certainly outliers in our target varaible nightly_rate_usd. We will need to acknowledge this during the modelling phase as some of the methods are sensitive to outliers (e.g., Linear Regression) while others are more robust and less affected (e.g., Random Forest). As such, we will not remove them from the dataset.
 
+```{r}
+# Univariate analysis - Nightly rate (USD)
+booking_data %>% 
+  mutate(z_score = (nightly_rate_usd - mean(nightly_rate_usd)) / sd(nightly_rate_usd)) %>% 
+  # Removing outliers
+  filter(abs(z_score) < 3) %>%
+  # Visualization of target variable
+  ggplot(aes(x = nightly_rate_usd)) +
+  geom_histogram(binwidth = 20) +
+  geom_vline(aes(xintercept = median(nightly_rate_usd)), color="indianred", linetype="dashed")+
+  geom_text(aes(x = median(nightly_rate_usd), label = paste("Median nightly rate:", median(nightly_rate_usd), "(usd)"), y = 1050), color = "indianred", hjust= -0.1) +
+  labs(x = "Nightly Rate (USD)", y = "Frequency",
+       title = "Distribution of Nightly Rate on Bookings from Businesses") +
+  theme_classic() +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5))
+```
+
+```{r}
+# Univariate analysis - Cancellation
+```
+
 ## Data Cleaning
 
 ```{r}
