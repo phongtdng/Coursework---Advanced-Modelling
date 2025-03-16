@@ -173,6 +173,26 @@ clean_data <- booking_data %>%
   select(-c(hotel_name, hotel_brand_code, hotel_chain_ticker_symbol, hotel_address, hotel_state, hotel_postal_code, nightly_rate_native, total_cost_native,currency_code))
 ```
 
+```{r}
+# Imputation
+data_for_imp <- clean_data %>% 
+  select(c(created_date, rate_offers, lqr, booking_source, check_in, check_out, nights, hotel_latitude, hotel_longitude, hotel_chain_name, hotel_stars, nightly_rate_usd, total_cost_usd, start_commission_info, start_cancel_policy, start_rate_type, start_room_type, start_bed_type, start_amenities))
+
+imp <- mice(data_for_imp, method = "rf", m = 5, maxit =5, seed=3467)
+
+complete_data <- complete(imp)
+
+clean_data$start_commission_info <- complete_data$start_commission_info
+clean_data$start_cancel_policy <- complete_data$start_cancel_policy
+clean_data$start_room_type <- complete_data$start_room_type
+clean_data$start_bed_type <- complete_data$start_bed_type
+
+# Double check for missing data
+colSums(is.na(clean_data))
+```
+
+As we explored previously, *start_commision_info*, *start_cancel_policy*, *start_room_type*, and *start_bed_type* had empty values that needed to be imputed. After the imputation, the only column with missing value is *cancel_date*. As stated before, in this column, missing or empty represents no cancellation. We will create a dummy column to represent this in the next section.
+
 ## Feature Engineering
 
 ### Feature Creation
