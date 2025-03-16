@@ -14,6 +14,7 @@ library(tidyverse)
 library(ggplot2)
 library(GGally)
 library(forcats)
+library(mice)
 ```
 
 # Data
@@ -147,9 +148,7 @@ Certain sectors seem to have a higher rate of booking cancellation than others (
 ## Data Cleaning & Pre-processing
 
 ```{r}
-booking_data <- booking_data %>% 
-  # Initial cleaning
-  mutate(across(c(added_date, modified_date, created_date, check_in, check_out, cancel_date), as.Date)) %>% 
+clean_data <- booking_data %>% 
   # Clean formatting
   mutate(start_bed_type = gsub(",", "", start_bed_type),
          start_cancel_policy = ifelse(start_cancel_policy == "6 Or More Days Before Checkin", "6 or More Days Before Checkin", start_cancel_policy),
@@ -164,14 +163,14 @@ booking_data <- booking_data %>%
            hotel_chain_name == "Preferred Hotel & Resorts" ~ "Preferred Hotel Group",
            hotel_chain_name == "Nh Hoteles" ~ "NH Hotels",
            hotel_chain_name == "Shangri-la Hotels And Resorts" ~ "Shangri-La Hotels and Resorts",
-           hotel_chain_name == "Supranational Hotels" ~ "Supranational")) %>% 
+           hotel_chain_name == "Supranational Hotels" ~ "Supranational",
+           TRUE ~ hotel_chain_name),
+         booking_source = toupper(booking_source)) %>% 
+  # Data type conversion
+  mutate(across(c(added_date, modified_date, created_date, check_in, check_out, cancel_date), as.Date),
+         across(c(booking_source, hotel_chain_name, start_commission_info, start_cancel_policy, start_rate_type, start_room_type, start_bed_type, start_amenities),as.factor)) %>% 
   # Remove irrelevant features
   select(-c(hotel_name, hotel_brand_code, hotel_chain_ticker_symbol, hotel_address, hotel_state, hotel_postal_code, nightly_rate_native, total_cost_native,currency_code))
-```
-
-```{r}
-# Imputation
-imp_selection <- 
 ```
 
 ## Feature Engineering
