@@ -97,7 +97,20 @@ booking_data %>%
 
 ```{r}
 # Univariate analysis - Cancellation
+booking_data %>% 
+  mutate(cancelled = ifelse(cancel_date == "",0,1) %>% as.factor()) %>% 
+  ggplot(aes(x = cancelled, fill = cancelled)) +
+  geom_bar() + 
+  stat_count(geom = "text", colour = "white", aes(label = paste0(..count..," (",round(..count../nrow(booking_data)*100,0), "%)")),position=position_stack(vjust=0.5))+
+  scale_fill_discrete(name = "Status", labels = c("Not Cancelled", "Cancelled")) +
+  labs(x = "Cancelled Status", y = "Frequency",
+       title = "Frequency of Cancellation of Business Hotel Bookings",
+       subtitle = "Moderate Degree of Imbalance in Target Variable") +
+  theme_classic() +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5))
 ```
+
+In our dataset, there is a moderate degree of imbalance in our dataset for the targeted variable cancellation. This might create some bias when training the models as many of them are created for balanced data. Therefore, we will consider balancing data in the sampling process to mitigate the imbalance.
 
 ## Data Cleaning
 
