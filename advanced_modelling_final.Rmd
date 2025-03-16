@@ -22,6 +22,22 @@ booking_data <- read.csv("data/NDAQ-CHB.csv")
 
 Link to dataset: <https://data.nasdaq.com/databases/CHB>
 
+## EDA
+
+```{r}
+# Check for missing values
+sum(is.na(booking_data))
+
+colSums(is.na(booking_data)) %>% 
+  as.data.frame() %>% 
+  filter(. > 0) %>% 
+  rownames_to_column() %>% 
+  rename("Column with NA" = 1,
+         "Count of NA" = 2)
+```
+
+In the dataset, there is only 1 missing value on hotel_state column. However, this column is not relevant for our data modelling.
+
 ## Data Cleaning
 
 ```{r}
@@ -68,9 +84,11 @@ data <- booking_data %>%
 
 ### Feature Transformation
 
-### Feature Selection
+```{r}
 
-## EDA
+```
+
+### Feature Selection
 
 # Classification
 
