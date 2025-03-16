@@ -168,7 +168,7 @@ clean_data <- booking_data %>%
          booking_source = toupper(booking_source)) %>% 
   # Data type conversion
   mutate(across(c(added_date, modified_date, created_date, check_in, check_out, cancel_date), as.Date),
-         across(c(booking_source, hotel_chain_name, start_commission_info, start_cancel_policy, start_rate_type, start_room_type, start_bed_type, start_amenities),as.factor)) %>% 
+         across(c(booking_source, hotel_chain_name, start_commission_info, start_cancel_policy, start_rate_type, start_room_type, start_bed_type, start_amenities, gic_sector),as.factor)) %>% 
   # Remove irrelevant features
   select(-c(hotel_name, hotel_brand_code, hotel_chain_ticker_symbol, hotel_address, hotel_state, hotel_postal_code, nightly_rate_native, total_cost_native,currency_code))
 ```
@@ -198,7 +198,7 @@ As we explored previously, *start_commision_info*, *start_cancel_policy*, *start
 ### Feature Creation
 
 ```{r}
-data <- booking_data %>% 
+df <- clean_data %>% 
   mutate(free_wifi = ifelse(grepl("Free Wifi", start_amenities), 1,0),
          free_breakfast = ifelse(grepl("Free Breakfast", start_amenities), 1,0),
          free_parking = ifelse(grepl("Free Breakfast", start_amenities), 1,0),
