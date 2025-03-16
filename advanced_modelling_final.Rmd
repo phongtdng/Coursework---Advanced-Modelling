@@ -12,6 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(ggplot2)
+library(GGally)
+library(forcats)
 ```
 
 # Data
@@ -111,6 +113,36 @@ booking_data %>%
 ```
 
 In our dataset, there is a moderate degree of imbalance in our dataset for the targeted variable cancellation. This might create some bias when training the models as many of them are created for balanced data. Therefore, we will consider balancing data in the sampling process to mitigate the imbalance.
+
+```{r}
+# Multivariate analysis - Nightly rate (USD)
+booking_data %>% 
+  select_if(is.numeric) %>% 
+  select(-c(hotel_latitude, hotel_longitude, nightly_rate_native,total_cost_native)) %>% 
+  ggpairs()
+```
+
+Using only numeric variables offers little insights to the nightly_rate_usd variable as these features are highly dependent to the nightly rate of the booking (e.g., total cost). We will later create more variables and factorize categorical variables in order to see more variables that influence nightly rate. We expect to see positive correlation between nightly rate and variables such as room type (i.e., deluxe rooms should cost more than standard rooms) or amenities (i.e., more amenities imply more cost).
+
+```{r}
+# Multivariate analysis - Cancellation
+booking_data %>% 
+  mutate(cancelled = ifelse(cancel_date == "",0,1)) %>% 
+  group_by(gic_sector) %>% 
+  mutate(cancel_percentage = sum(cancelled)/n()) %>% 
+  ungroup() %>% 
+  filter(cancelled == 1 & gic_sector != "" & start_cancel_policy != "") %>% 
+  ggplot(aes(x = fct_infreq(gic_sector), y = cancel_percentage, fill = start_cancel_policy)) +
+  geom_col() +
+  labs(x = "Client Sector", y = "Cancel Percentage",
+       title = "Cancellation Frequency by Sector and Cancellation Policy",
+       fill = "Cancellation Policy") +
+  theme_classic() +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+        axis.text.x = element_text(angle = 45, hjust= 1))
+```
+
+Certain sectors seem to have a higher rate of booking cancellation than others (e.g., IT with 20% cancellation rate and Industrial with about 15% cancellation rate). We also observe that more flexible cancellation policies result in higher cancellation where as the less days are given to cancel the booking the less likely the client would cancel.
 
 ## Data Cleaning
 
