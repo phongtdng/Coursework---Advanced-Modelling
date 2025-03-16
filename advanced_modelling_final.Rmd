@@ -54,15 +54,15 @@ data <- booking_data %>%
          ) %>% 
   # Previous cancellation per company (client)
   group_by(company_id) %>% 
-  mutate(client_previous_cancellation = sum(cancelled)) %>% 
+  mutate(client_cancellation = sum(cancelled)) %>% 
   ungroup() %>% 
   # Previous cancellation per agency
   group_by(agency_id) %>% 
-  mutate(agency_previous_cancellation = sum(cancelled)) %>% 
+  mutate(agency_cancellation = sum(cancelled)) %>% 
   ungroup() %>% 
   # Previous cancellation per hotel
   group_by(hotel_brand_name) %>% 
-  mutate(hotel_previous_cancellation = sum(cancelled)) %>% 
+  mutate(hotel_cancellation = sum(cancelled)) %>% 
   ungroup()
 ```
 
