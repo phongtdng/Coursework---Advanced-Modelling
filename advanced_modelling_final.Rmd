@@ -28,7 +28,8 @@ Link to dataset: <https://data.nasdaq.com/databases/CHB>
 booking_data <- booking_data %>% 
   # Initial cleaning
   mutate(across(c(added_date, modified_date, created_date, check_in, check_out, cancel_date), as.Date)) %>% 
-  mutate(start_bed_type = gsub(",", "", start_bed_type)) 
+  mutate(start_bed_type = gsub(",", "", start_bed_type),
+         start_cancel_policy = ifelse(start_cancel_policy == "6 Or More Days Before Checkin", "6 or More Days Before Checkin", start_cancel_policy)) 
 ```
 
 ## Feature Engineering
