@@ -38,6 +38,24 @@ colSums(is.na(booking_data)) %>%
 
 In the dataset, there is only 1 missing value on hotel_state column. However, this column is not relevant for our data modelling.
 
+```{r}
+# Check for empty values
+colSums(booking_data == "") %>% 
+  as.data.frame() %>% 
+  filter(. > 0) %>% 
+  rownames_to_column() %>% 
+  rename("Column with EMPTY" = 1,
+         "Count of EMPTY" = 2)
+```
+
+There are a lot of empty cells in the dataset. Some of these are valid value as they indicate a 0 value. For example, the empty rows in *cancel_date* indicate that there was not any cancellation made. Another columns of this type are *start_amenities*. For these columns, we will simply transform into dummy columns and replace with 0 for empty cells.
+
+Some of the columns have empty values because simply there is no value (e.g., *hotel_chain_name*, *hotel_chain_ticker_symbol*). For these columns, we will impute using the *hotel_brand_name* column.
+
+For column *hotel_postal_code*, we can impute based on location (*longitude* and *latitude*). However, for the purpose of model building, we will not use this column and we will simply remove this column.
+
+The other columns (*start_commision_info*, *start_cancel_policy*, *start_room_type*, and *start_bed_type*) are actually missing values that can be derived from the other data points and contain relevant information for our models. We, therefore, will later impute them.
+
 ## Data Cleaning
 
 ```{r}
