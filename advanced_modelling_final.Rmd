@@ -56,6 +56,14 @@ For column *hotel_postal_code*, we can impute based on location (*longitude* and
 
 The other columns (*start_commision_info*, *start_cancel_policy*, *start_room_type*, and *start_bed_type*) are actually missing values that can be derived from the other data points and contain relevant information for our models. We, therefore, will later impute them.
 
+```{r}
+# Check for duplicate
+booking_data %>% 
+  filter(duplicated(reservation_id))
+```
+
+There is no duplicated reservation in our dataset.
+
 ## Data Cleaning
 
 ```{r}
