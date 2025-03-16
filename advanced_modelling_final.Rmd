@@ -45,7 +45,25 @@ data <- booking_data %>%
          cancelled = ifelse(!is.na(cancel_date),1,0),
          cancel_after_booking = as.numeric(cancel_date - created_date),
          cancel_before_checkin = as.numeric(check_in - cancel_date),
-         leadtime = as.numeric(check_in - created_date))
+         leadtime = as.numeric(check_in - created_date),
+         booking_month = month(created_date),
+         checkin_month = month(check_in),
+         weekday_booking = mapply(function(x,y) sum(!weekdays(seq(x, y,"days")) %in% c("Saturday", "Sunday")), check_in,check_out),
+         weekdend_booking = mapply(function(x,y) sum(weekdays(seq(x, y,"days")) %in% c("Saturday", "Sunday")), check_in,check_out),
+         booking_change = ifelse(added_date == modified_date, 0,1),
+         ) %>% 
+  # Previous cancellation per company (client)
+  group_by(company_id) %>% 
+  mutate(client_previous_cancellation = sum(cancelled)) %>% 
+  ungroup() %>% 
+  # Previous cancellation per agency
+  group_by(agency_id) %>% 
+  mutate(agency_previous_cancellation = sum(cancelled)) %>% 
+  ungroup() %>% 
+  # Previous cancellation per hotel
+  group_by(hotel_brand_name) %>% 
+  mutate(hotel_previous_cancellation = sum(cancelled)) %>% 
+  ungroup()
 ```
 
 ### Feature Transformation
