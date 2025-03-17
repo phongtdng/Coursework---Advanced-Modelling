@@ -292,9 +292,25 @@ classTrain <- df[trainIndex,]
 classTest <- df[-trainIndex,]
 ```
 
-## Interpretation
+## Statistical Classification
 
-## Prediction
+### Logistic Regression
+
+### Bayes Classfiers
+
+## Machine Learning Classification
+
+### kNN
+
+### Decision Trees
+
+### Random Forests
+
+### Gradient Boosting
+
+### Support Vector Machines
+
+### Neural Networks
 
 # Regression
 
