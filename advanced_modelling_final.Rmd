@@ -294,6 +294,13 @@ classTest <- df[-trainIndex,]
 
 ## Statistical Classification
 
+```{r}
+# 5-fold repeated 5 times
+ctrl <- trainControl(method = "repeatedcv",
+                     number = 5,
+                     repeats = 5)
+```
+
 ### Baseline
 
 ```{r}
