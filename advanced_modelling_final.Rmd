@@ -224,7 +224,7 @@ df <- clean_data %>%
   mutate(hotel_cancellation = sum(cancelled)) %>% 
   ungroup() %>% 
   # Correct data type of new features
-  mutate(across(c(free_wifi, free_breakfast, free_parking, concierge, cancelled, checkin_month, booking_change), as.factor)) %>% 
+  mutate(across(c(free_wifi, free_breakfast, free_parking, concierge, cancelled, checkin_month, booking_change, hotel_country), as.factor)) %>% 
   # Removing booking made after checkin
   filter(leadtime > 0)
 ```
