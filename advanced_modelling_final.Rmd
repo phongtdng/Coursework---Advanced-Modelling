@@ -264,7 +264,16 @@ transformation %>%
   theme_classic()
 ```
 
-### Feature Selection
+### Final Dataframe
+
+```{r}
+df_final <- cbind(
+  df %>% select_if(is.factor),
+  df$hotel_latitude,
+  df$hotel_longitude,
+  transformation
+)
+```
 
 # Classification
 
