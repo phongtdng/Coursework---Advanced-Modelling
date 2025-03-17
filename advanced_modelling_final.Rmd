@@ -210,6 +210,10 @@ df <- clean_data %>%
          weekday_booking = mapply(function(x,y) sum(!weekdays(seq(x, y,"days")) %in% c("Saturday", "Sunday")), check_in,check_out),
          weekend_booking = mapply(function(x,y) sum(weekdays(seq(x, y,"days")) %in% c("Saturday", "Sunday")), check_in,check_out),
          booking_change = ifelse(added_date == modified_date, 0,1),
+         bed_type = case_when(grepl("Twin",start_bed_type) ~ "Twin",
+                              grepl("Queen",start_bed_type) ~ "Queen",
+                              grepl("King",start_bed_type) ~"King"),
+         bed_number = ifelse(grepl("Two",start_bed_type), 2,1)
          ) %>% 
   # Previous cancellation per company (client)
   group_by(company_id) %>% 
@@ -224,7 +228,7 @@ df <- clean_data %>%
   mutate(hotel_cancellation = sum(cancelled)) %>% 
   ungroup() %>% 
   # Correct data type of new features
-  mutate(across(c(free_wifi, free_breakfast, free_parking, concierge, cancelled, checkin_month, booking_change, hotel_country), as.factor)) %>% 
+  mutate(across(c(free_wifi, free_breakfast, free_parking, concierge, cancelled, checkin_month, booking_change, hotel_country, bed_type, bed_number), as.factor)) %>% 
   # Removing booking made after checkin
   filter(leadtime > 0)
 ```
