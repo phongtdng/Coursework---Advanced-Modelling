@@ -273,6 +273,8 @@ df_final <- cbind(
   df$hotel_longitude,
   transformation
 )
+
+# saveRDS(df_final, "df_ready_for_ML.rds")
 ```
 
 # Classification
