@@ -294,7 +294,21 @@ classTest <- df[-trainIndex,]
 
 ## Statistical Classification
 
+### Baseline
+
+```{r}
+summary(classTrain$cancelled)
+
+basePred <- rep(0, nrow(classTest)) %>% as.factor()
+
+confusionMatrix(basePred, classTest$cancelled)
+```
+
 ### Logistic Regression
+
+```{r}
+
+```
 
 ### Bayes Classfiers
 
