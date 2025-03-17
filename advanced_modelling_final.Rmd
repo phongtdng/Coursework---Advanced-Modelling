@@ -234,7 +234,7 @@ df <- clean_data %>%
 ```{r}
 transformation <- df %>% 
   select_if(is.numeric) %>% 
-  select(-c(hotel_latitude, hotel_longitude))
+  select(-c(hotel_latitude, hotel_longitude)) 
 
 transformation %>% 
   pivot_longer(cols = everything(), names_to = "var", values_to = "value") %>% 
@@ -244,14 +244,20 @@ transformation %>%
   theme_classic()
 
 transformation <- transformation %>%
-  mutate(log_nightly_rate = log(nightly_rate_usd),
-         log_total_cost = log(total_cost_usd),
-         log_lead_time = log(leadtime),
-         log_nights = log(nights),
-         sq_client_cancellation = client_cancellation^2,
-         sq_agency_cancellation = agency_cancellation^2,
-         sq_hotel_stars = hotel_stars^2
-  )
+  # Normalise with log and feature squaring transform
+  mutate(across(c(amenities, client_cancellation, hotel_cancellation, leadtime, lqr, nightly_rate_usd, nights, rate_offers, total_cost_usd, weekday_booking, weekend_booking), function(x) log(x+1))) %>% 
+  mutate(across(c(hotel_stars), function(x) x^2)) %>%
+  # Min max normalisation
+  mutate(across(everything(), function(x) ((x-min(x))/(max(x)-min(x))))) %>% 
+  # Standardize
+  mutate(across(everything(), scale))
+
+transformation %>% 
+  pivot_longer(cols = everything(), names_to = "var", values_to = "value") %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  facet_wrap(~ var, scales = "free") +
+  theme_classic()
 ```
 
 ### Feature Selection
