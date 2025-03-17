@@ -58,7 +58,7 @@ Some of the columns have empty values because simply there is no value (e.g., *h
 
 For column *hotel_postal_code*, we can impute based on location (*longitude* and *latitude*). However, for the purpose of model building, we will not use this column and we will simply remove this column.
 
-The other columns (*start_commision_info*, *start_cancel_policy*, *start_room_type*, and *start_bed_type*) are actually missing values that can be derived from the other data points and contain relevant information for our models. We, therefore, will later impute them.
+The other columns (*start_commision_info*, *start_cancel_policy*, *start_room_type*, and *start_bed_type, gic_sector*) are actually missing values that can be derived from the other data points and contain relevant information for our models. We, therefore, will later impute them.
 
 ```{r}
 # Check for duplicate
@@ -158,6 +158,7 @@ clean_data <- booking_data %>%
          start_cancel_policy = ifelse(start_cancel_policy == "", NA, start_cancel_policy),
          start_room_type = ifelse(start_room_type == "", NA, start_room_type),
          start_bed_type = ifelse(start_bed_type == "", NA, start_bed_type),
+         gic_sector = ifelse(gic_sector == "", NA, gic_sector),
          hotel_chain_name = case_when(
            hotel_chain_name == "Ihg" ~ "IHG",
            hotel_chain_name == "Nh Hotels" ~ "NH Hotels",
@@ -177,7 +178,7 @@ clean_data <- booking_data %>%
 ```{r}
 # Imputation
 data_for_imp <- clean_data %>% 
-  select(c(created_date, rate_offers, lqr, booking_source, check_in, check_out, nights, hotel_latitude, hotel_longitude, hotel_chain_name, hotel_stars, nightly_rate_usd, total_cost_usd, start_commission_info, start_cancel_policy, start_rate_type, start_room_type, start_bed_type, start_amenities))
+  select(c(created_date, rate_offers, lqr, booking_source, check_in, check_out, nights, hotel_latitude, hotel_longitude, hotel_chain_name, hotel_stars, nightly_rate_usd, total_cost_usd, start_commission_info, start_cancel_policy, start_rate_type, start_room_type, start_bed_type, start_amenities, gic_sector))
 
 imp <- mice(data_for_imp, method = "rf", m = 5, maxit =5, seed=3467)
 
@@ -187,6 +188,7 @@ clean_data$start_commission_info <- complete_data$start_commission_info
 clean_data$start_cancel_policy <- complete_data$start_cancel_policy
 clean_data$start_room_type <- complete_data$start_room_type
 clean_data$start_bed_type <- complete_data$start_bed_type
+clean_data$gic_sector <- complete_data$gic_sector
 
 # Double check for missing data
 colSums(is.na(clean_data))
@@ -212,6 +214,7 @@ df <- clean_data %>%
          weekend_booking = mapply(function(x,y) sum(weekdays(seq(x, y,"days")) %in% c("Saturday", "Sunday")), check_in,check_out),
          booking_change = ifelse(added_date == modified_date, 0,1),
          bed_type = case_when(grepl("Twin",start_bed_type) ~ "Twin",
+                              grepl("Double",start_bed_type) ~"Double",
                               grepl("Queen",start_bed_type) ~ "Queen",
                               grepl("King",start_bed_type) ~"King"),
          bed_number = ifelse(grepl("Two",start_bed_type), 2,1)
@@ -229,7 +232,8 @@ df <- clean_data %>%
   mutate(hotel_cancellation = sum(cancelled)) %>% 
   ungroup() %>% 
   # Correct data type of new features
-  mutate(across(c(free_wifi, free_breakfast, free_parking, concierge, cancelled, checkin_month, booking_change, hotel_country, bed_type, bed_number), as.factor)) %>% 
+  mutate(across(c(free_wifi, free_breakfast, free_parking, concierge, cancelled, checkin_month, booking_change, hotel_country, bed_type, bed_number), as.factor),
+         bed_type = factor(bed_type, levels = c("Twin", "Double", "Queen", "King"))) %>% 
   # Removing booking made after checkin
   filter(leadtime > 0)
 ```
@@ -273,7 +277,8 @@ df_final <- cbind(
   df$hotel_latitude,
   df$hotel_longitude,
   transformation
-)
+) %>% 
+  select(-start_amenities)
 
 # saveRDS(df_final, "df_ready_for_ML.rds")
 ```
@@ -312,10 +317,6 @@ confusionMatrix(basePred, classTest$cancelled)
 ```
 
 ### Logistic Regression
-
-```{r}
-
-```
 
 ### Bayes Classfiers
 
