@@ -224,7 +224,9 @@ df <- clean_data %>%
   # Previous cancellation per hotel
   group_by(hotel_brand_name) %>% 
   mutate(hotel_cancellation = sum(cancelled)) %>% 
-  ungroup()
+  ungroup() %>% 
+  # Correct data type of new features
+  mutate(across(c(free_wifi, free_breakfast, free_parking, concierge, cancelled, checkin_month, booking_change), as.factor))
 ```
 
 ### Feature Transformation
