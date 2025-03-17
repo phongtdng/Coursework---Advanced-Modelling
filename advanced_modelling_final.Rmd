@@ -15,6 +15,7 @@ library(ggplot2)
 library(GGally)
 library(forcats)
 library(mice)
+library(caret)
 ```
 
 # Data
@@ -278,6 +279,18 @@ df_final <- cbind(
 ```
 
 # Classification
+
+## Data Splitting
+
+```{r}
+set.seed(5436)
+df <- read_rds("df_ready_for_ML.rds")
+
+trainIndex <- createDataPartition(df$cancelled, p = 0.8, list = FALSE)
+
+classTrain <- df[trainIndex,]
+classTest <- df[-trainIndex,]
+```
 
 ## Interpretation
 
