@@ -318,6 +318,18 @@ confusionMatrix(basePred, classTest$cancelled)
 
 ### Logistic Regression
 
+```{r warning = FALSE}
+# Model train
+logit <- train(cancelled ~., data = classTrain,
+               method = "glm",
+               trControl = ctrl,
+               family = "binomial")
+# saveRDS(logit, "models/classification/logit.rds")
+
+# Model results
+logit
+```
+
 ### Bayes Classfiers
 
 ## Machine Learning Classification
