@@ -393,13 +393,21 @@ trees
 ## Data Splitting
 
 ```{r}
-set.seed(5772)
+set.seed(5436)
 df <- read_rds("df_ready_for_ML.rds")
 
 trainIndex <- createDataPartition(df$cancelled, p = 0.8, list = FALSE)
 
 regTrain <- df[trainIndex,]
 regTest <- df[-trainIndex,]
+
+# Df to compare prediction results
+test_results <- data.frame(test = regTest$nightly_rate_usd)
+```
+
+```{r}
+# 5-fold repeated 5 times train control
+ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
 ```
 
 ## Statistical Learning
@@ -417,6 +425,28 @@ sqrt(mean((basePred - regTest$nightly_rate_usd)^2))
 ```
 
 ### Linear Regression
+
+```{r}
+lm <- train(nightly_rate_usd ~. , data = regTrain,
+            method = "lm",
+            trControl = ctrl) 
+saveRDS(lm, "models/regression/lm.rds")
+lm
+```
+
+```{r}
+test_results$lm <- predict(lm, regTest)
+postResample(pred = test_results$lm, obs = test_results$test)
+```
+
+```{r}
+ggplot(test_results, aes(x = lm, y = test)) +
+  geom_point() +
+  labs(title = "Linear Regression Observed vs. Predicted", 
+       x = "Predicted", y = "Observed") +
+  geom_abline(intercept = 0, slope = 1, colour = "blue") +
+  theme_bw()
+```
 
 ### Multiple Regression
 
