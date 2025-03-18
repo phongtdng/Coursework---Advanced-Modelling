@@ -380,6 +380,36 @@ trees
 
 # Regression
 
-## Interpretation
+## Statistical Learning
+
+### Baseline 
+
+### Linear Regression
+
+### Multiple Regression
+
+### Forward Regression
+
+### Backward Regression
+
+### Stepwise Regression
+
+### Ridge Regression
+
+### Lasso
+
+### Elastic Net
+
+## Machine Learning
+
+### kNN
+
+### Random Forest
+
+### Gradient Boosting
+
+### Neural Networks
+
+### Ensemble
 
 ## Prediction
