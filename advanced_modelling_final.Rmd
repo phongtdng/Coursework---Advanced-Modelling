@@ -274,8 +274,7 @@ transformation %>%
 ```{r}
 df_final <- cbind(
   df %>% select_if(is.factor),
-  df$hotel_latitude,
-  df$hotel_longitude,
+  df %>% select(hotel_latitude,hotel_longitude),
   transformation
 ) %>% 
   select(-start_amenities)
@@ -301,9 +300,10 @@ classTest <- df[-trainIndex,]
 
 ```{r}
 # 5-fold repeated 5 times
-ctrl <- trainControl(method = "repeatedcv",
-                     number = 5,
-                     repeats = 5)
+ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5, classProbs = TRUE)
+
+levels(classTrain$cancelled) <- c("No", "Yes")
+levels(classTest$cancelled) <- c("No", "Yes")
 ```
 
 ### Baseline
@@ -311,7 +311,7 @@ ctrl <- trainControl(method = "repeatedcv",
 ```{r}
 summary(classTrain$cancelled)
 
-basePred <- rep(0, nrow(classTest)) %>% as.factor()
+basePred <- rep("No", nrow(classTest)) %>% factor(c("No", "Yes"),levels = c("No", "Yes"))
 
 confusionMatrix(basePred, classTest$cancelled)
 ```
@@ -319,6 +319,7 @@ confusionMatrix(basePred, classTest$cancelled)
 ### Logistic Regression
 
 ```{r warning = FALSE}
+set.seed(3245)
 # Model train
 logit <- train(cancelled ~., data = classTrain,
                method = "glm",
@@ -335,6 +336,15 @@ logit
 ## Machine Learning Classification
 
 ### kNN
+
+```{r}
+# Model train
+knn <- train(cancelled ~., data = classTrain,
+             method = "knn",
+             trControl = ctrl,
+             tuneGrid = expand.grid(k = seq(1, 101, by = 2)))
+knn
+```
 
 ### Decision Trees
 
