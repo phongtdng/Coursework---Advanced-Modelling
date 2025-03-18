@@ -343,8 +343,7 @@ logit
 knn <- train(cancelled ~., data = classTrain,
              method = "knn",
              trControl = ctrl,
-             tuneGrid = expand.grid(k = seq(1, 51, by = 2)),
-             metric = "ROC")
+             tuneGrid = expand.grid(k = seq(1, 51, by = 2)))
 saveRDS(knn, "models/classification/knn.rds")
 knn
 ```
@@ -357,8 +356,7 @@ trees <- train(cancelled ~., data = classTrain,
                method = "rpart",
                trControl = ctrl,
                control = rpart.control(minsplit = 20, maxdepth = 10, cp=0.01),
-               tuneLength = 10,
-               metric="ROC")w
+               tuneLength = 10)
 saveRDS(trees, "models/classification/trees.rds")
 trees
 ```
@@ -366,10 +364,24 @@ trees
 ### Random Forests
 
 ```{r}
-
+rf <- train(cancelled ~. , data = classTrain,
+            method = "rf",
+            trControl = ctrl,
+            tuneLength = 10)
+saveRDS(rf, "models/classification/rf.rds")
+rf
 ```
 
 ### Gradient Boosting
+
+```{r}
+gbm <- train(cancelled ~. , data = classTrain,
+            method = "xgbTree",
+            trControl = ctrl,
+            tuneLength = 15)
+saveRDS(rf, "models/classification/xgb.rds")
+gbm
+```
 
 ### Support Vector Machines
 
