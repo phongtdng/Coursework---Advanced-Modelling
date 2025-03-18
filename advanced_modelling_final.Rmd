@@ -451,18 +451,42 @@ summary(linFit)
 R^2^ is very low, around 10%. We will add some categorical variables.
 
 ```{r}
-linFit <- lm(nightly_rate_usd ~ ., data = regTrain)
-
-summary(linFit)
+ols_step_forward_p(linFit)
 ```
 
 ```{r}
+linFit <- lm(nightly_rate_usd ~ ., data = regTrain)
+
+coef <- summary(linFit)$coefficients
+coef[coef[,4] < 0.05,]
+```
+
+Categorical variables that are significant: *hotel_country, start_commission_info, start_cancel_policy, start_rate_type, gic_sector, free_breakfast, concierge, check_in_month, bed_type, bed_number*.
+
+```{r}
+linFit <- lm(nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + hotel_country + start_commission_info + start_cancel_policy + start_rate_type, data = regTrain)
+
+summary(linFit)
+
 ols_step_forward_p(linFit)
+```
+
+```{r}
+plot(ols_step_forward_p(linFit))
+```
+
+Around 9-10 variables
+
+```{r}
+# Simple model 
+modelS <- nightly_rate_usd ~ free_breakfast + hotel_stars + hotel_longitude + hotel_latitude + start_commission_info + leadtime + hotel_cancellation + hotel_country + start_cancel_policy + start_rate_type
+# Complex model with all significant numeric and categorical features
+modelL <- nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + hotel_country + start_commission_info + start_cancel_policy + start_rate_type + gic_sector
 ```
 
 ## Statistical Learning
 
-### Baseline 
+### Baseline
 
 ```{r}
 # Baseline model
