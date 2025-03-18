@@ -17,6 +17,11 @@ library(forcats)
 library(mice)
 library(caret)
 library(rpart)
+library(MASS)
+library(conflicted)
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+library(olsrr)
 ```
 
 # Data
@@ -278,9 +283,9 @@ df_final <- cbind(
   df %>% select(hotel_latitude,hotel_longitude),
   transformation
 ) %>% 
-  select(-start_amenities)
+  select(-c(start_amenities, start_bed_type))
 
-# saveRDS(df_final, "df_ready_for_ML.rds")
+saveRDS(df_final, "df_ready_for_ML.rds")
 ```
 
 # Classification
@@ -333,6 +338,12 @@ logit
 ```
 
 ### Bayes Classfiers
+
+```{r}
+# Model train
+lda <- lda(classTrain[,-14], grouping = classTrain[,14])
+lda
+```
 
 ## Machine Learning Classification
 
@@ -389,6 +400,128 @@ gbm
 
 # Regression
 
-## Interpretation
+```{r}
+# inverse log
+# unscaled <- classTrain$nightly_rate_usd * 0.109 + 0.448
+# unnormalised <- unscaled * (log(max(booking_data$nightly_rate_usd) +1) - log(min(booking_data$nightly_rate_usd) +1)) + log(min(booking_data$nightly_rate_usd)+1)
+# unlogged <- exp(unnormalised) -1
+```
+
+## Data Splitting
+
+```{r}
+set.seed(5436)
+df <- read_rds("df_ready_for_ML.rds") %>% 
+  select(-total_cost_usd)
+
+trainIndex <- createDataPartition(df$cancelled, p = 0.8, list = FALSE)
+
+regTrain <- df[trainIndex,]
+regTest <- df[-trainIndex,]
+
+# Df to compare prediction results
+test_results <- data.frame(test = regTest$nightly_rate_usd)
+```
+
+```{r}
+# 5-fold repeated 5 times train control
+ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
+```
+
+## Model Selection
+
+```{r}
+corr <- sort(cor(regTrain %>% select_if(is.numeric))["nightly_rate_usd",], decreasing = TRUE)
+corr <- data.frame(corr) %>% rownames_to_column()
+
+ggplot(corr, aes(x = rowname, y = corr)) +
+  geom_bar(stat = "identity", fill = "lightblue") + 
+  scale_x_discrete(limits= corr$rowname) +
+  labs(x = "Predictors", y = "Price", title = "Correlations") + 
+  theme(plot.title = element_text(hjust = 0, size = rel(1.5)),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+linFit <- lm(nightly_rate_usd ~ hotel_stars + agency_cancellation + leadtime + hotel_cancellation + client_cancellation + rate_offers + weekend_booking + amenities, data = regTrain)
+
+summary(linFit)
+```
+
+R^2^ is very low, around 10%. We will add some categorical variables.
+
+```{r}
+linFit <- lm(nightly_rate_usd ~ ., data = regTrain)
+
+summary(linFit)
+```
+
+```{r}
+ols_step_forward_p(linFit)
+```
+
+## Statistical Learning
+
+### Baseline 
+
+```{r}
+# Baseline model
+mean(regTrain$nightly_rate_usd)
+
+basePred <-  rep(mean(regTrain$nightly_rate_usd), nrow(regTest))
+
+# RMSE
+sqrt(mean((basePred - regTest$nightly_rate_usd)^2))
+```
+
+### Linear Regression
+
+```{r}
+lm <- train(nightly_rate_usd ~. , data = regTrain,
+            method = "lm",
+            trControl = ctrl) 
+saveRDS(lm, "models/regression/lm.rds")
+lm
+```
+
+```{r}
+test_results$lm <- predict(lm, regTest)
+postResample(pred = test_results$lm, obs = test_results$test)
+```
+
+```{r}
+ggplot(test_results, aes(x = lm, y = test)) +
+  geom_point() +
+  labs(title = "Linear Regression Observed vs. Predicted", 
+       x = "Predicted", y = "Observed") +
+  geom_abline(intercept = 0, slope = 1, colour = "blue") +
+  theme_bw()
+```
+
+### Multiple Regression
+
+### Forward Regression
+
+### Backward Regression
+
+### Stepwise Regression
+
+### Ridge Regression
+
+### Lasso
+
+### Elastic Net
+
+## Machine Learning
+
+### kNN
+
+### Random Forest
+
+### Gradient Boosting
+
+### Neural Networks
+
+### Ensemble
 
 ## Prediction
