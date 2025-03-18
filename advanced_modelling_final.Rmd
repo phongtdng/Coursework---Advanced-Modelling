@@ -571,6 +571,12 @@ bReg
 plot(bReg)
 ```
 
+```{r}
+# Predict
+test_results$bReg <- predict(bReg, regTest)
+postResample(pred = test_results$bReg,  obs = test_results$test)
+```
+
 ### Stepwise Regression
 
 ### Ridge Regression
