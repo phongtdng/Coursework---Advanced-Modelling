@@ -326,7 +326,7 @@ logit <- train(cancelled ~., data = classTrain,
                method = "glm",
                trControl = ctrl,
                family = "binomial")
-# saveRDS(logit, "models/classification/logit.rds")
+saveRDS(logit, "models/classification/logit.rds")
 
 # Model results
 logit
@@ -345,7 +345,7 @@ knn <- train(cancelled ~., data = classTrain,
              trControl = ctrl,
              tuneGrid = expand.grid(k = seq(1, 51, by = 2)),
              metric = "ROC")
-
+saveRDS(knn, "models/classification/knn.rds")
 knn
 ```
 
@@ -356,14 +356,18 @@ knn
 trees <- train(cancelled ~., data = classTrain,
                method = "rpart",
                trControl = ctrl,
-               control = rpart.control(minsplit = 30, maxdepth = 10, cp=0.01),
+               control = rpart.control(minsplit = 20, maxdepth = 10, cp=0.01),
                tuneLength = 10,
-               metric="ROC")
-
+               metric="ROC")w
+saveRDS(trees, "models/classification/trees.rds")
 trees
 ```
 
 ### Random Forests
+
+```{r}
+
+```
 
 ### Gradient Boosting
 
