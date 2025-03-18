@@ -612,6 +612,11 @@ saveRDS(ridge, "models/regression/ridge_tuned.rds")
 plot(ridge)
 ```
 
+```{r}
+test_results$ridge <- predict(ridge, regTest)
+postResample(pred = test_results$ridge,  obs = test_results$test)
+```
+
 ### Lasso
 
 ```{r}
@@ -627,6 +632,11 @@ saveRDS(lasso, "models/regression/lasso_tuned.rds")
 plot(lasso)
 ```
 
+```{r}
+test_results$lasso <- predict(lasso, regTest)
+postResample(pred = test_results$lasso,  obs = test_results$test)
+```
+
 ### Elastic Net
 
 ```{r}
@@ -639,6 +649,11 @@ eNet <- train(modelL, data = regTrain,
 saveRDS(eNet, "models/regression/eNet_tuned.rds")
 
 plot(eNet)
+```
+
+```{r}
+test_results$eNet <- predict(eNet, regTest)
+postResample(pred = test_results$eNet,  obs = test_results$test)
 ```
 
 ## Machine Learning
