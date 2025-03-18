@@ -18,6 +18,9 @@ library(mice)
 library(caret)
 library(rpart)
 library(MASS)
+library(conflicted)
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
 ```
 
 # Data
@@ -380,9 +383,38 @@ trees
 
 # Regression
 
+```{r}
+# inverse log
+# unscaled <- classTrain$nightly_rate_usd * 0.109 + 0.448
+# unnormalised <- unscaled * (log(max(booking_data$nightly_rate_usd) +1) - log(min(booking_data$nightly_rate_usd) +1)) + log(min(booking_data$nightly_rate_usd)+1)
+# unlogged <- exp(unnormalised) -1
+```
+
+## Data Splitting
+
+```{r}
+set.seed(5772)
+df <- read_rds("df_ready_for_ML.rds")
+
+trainIndex <- createDataPartition(df$cancelled, p = 0.8, list = FALSE)
+
+regTrain <- df[trainIndex,]
+regTest <- df[-trainIndex,]
+```
+
 ## Statistical Learning
 
 ### Baseline 
+
+```{r}
+# Baseline model
+mean(regTrain$nightly_rate_usd)
+
+basePred <-  rep(mean(regTrain$nightly_rate_usd), nrow(regTest))
+
+# RMSE
+sqrt(mean((basePred - regTest$nightly_rate_usd)^2))
+```
 
 ### Linear Regression
 
