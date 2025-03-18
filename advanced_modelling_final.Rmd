@@ -501,7 +501,7 @@ sqrt(mean((basePred - regTest$nightly_rate_usd)^2))
 ### Linear Regression
 
 ```{r}
-lm <- train(nightly_rate_usd ~. , data = regTrain,
+lm <- train(modelS , data = regTrain,
             method = "lm",
             trControl = ctrl) 
 saveRDS(lm, "models/regression/lm.rds")
