@@ -522,9 +522,33 @@ ggplot(test_results, aes(x = lm, y = test)) +
   theme_bw()
 ```
 
-### Multiple Regression
-
 ### Forward Regression
+
+```{r}
+fReg <- train(modelL, data = regTrain,
+              method = "leapForward",
+              tuneGrid = expand.grid(nvmax = 10:30),
+              trControl = ctrl)
+fReg
+
+# Tunning
+fReg <- train(modelL, data = regTrain,
+              method = "leapForward",
+              tuneGrid = expand.grid(nvmax = 50:100),
+              trControl = ctrl)
+saveRDS(fReg, "models/regression/fReg_tuned.rds")
+fReg
+```
+
+```{r}
+plot(fReg)
+```
+
+```{r}
+# Predict
+test_results$fReg <- predict(fReg, regTest)
+postResample(pred = test_results$fReg, obs = test_results$test)
+```
 
 ### Backward Regression
 
