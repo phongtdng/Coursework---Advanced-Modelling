@@ -17,6 +17,7 @@ library(forcats)
 library(mice)
 library(caret)
 library(rpart)
+library(MASS)
 ```
 
 # Data
@@ -333,6 +334,12 @@ logit
 ```
 
 ### Bayes Classfiers
+
+```{r}
+# Model train
+lda <- lda(classTrain[,-14], grouping = classTrain[,14])
+lda
+```
 
 ## Machine Learning Classification
 
