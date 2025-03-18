@@ -552,6 +552,25 @@ postResample(pred = test_results$fReg, obs = test_results$test)
 
 ### Backward Regression
 
+```{r}
+bReg <- train(modelL, data = regTrain,
+              method = "leapBackward",
+              tuneGrid = expand.grid(nvmax = 10:30),
+              trControl = ctrl)
+bReg
+# Tuning
+bReg <- train(modelL, data = regTrain,
+              method = "leapBackward",
+              tuneGrid = expand.grid(nvmax = 80:100),
+              trControl = ctrl)
+saveRDS(bReg, "models/regression/bReg_tuned.rds")
+bReg
+```
+
+```{r}
+plot(bReg)
+```
+
 ### Stepwise Regression
 
 ### Ridge Regression
