@@ -660,11 +660,81 @@ postResample(pred = test_results$eNet,  obs = test_results$test)
 
 ### kNN
 
+```{r}
+knn <- train(modelL, data = regTrain,
+             method = "kknn",
+             timeGrid = data.frame(kmax=seq(1,15,2),distance=2,kernel='optimal'),
+             trControl = ctrl)
+saveRDS(knn, "models/regression/knn.RDS")
+plot(knn)
+```
+
+```{r}
+test_results$knn <- predict(knn, regTest)
+
+postResample(pred = test_results$knn,  obs = test_results$test)
+```
+
 ### Random Forest
+
+```{r}
+rfGrid <- expand.grid(
+  .mtry = seq(2,4),
+  .splitrule = "variance",
+  .min.node.size = seq(1,4)
+)
+
+rf <- train(modelL, data = regTrain,
+            method = "ranger",
+            trControl = ctrl,
+            tuneGrid = rfGrid)
+saveRDS(rf, "models/regression/rf.rds")
+rf
+```
+
+```{r}
+test_results$rf <- predict(rf, regTest)
+
+postResample(pred = test_results$rf,  obs = test_results$test)
+```
 
 ### Gradient Boosting
 
+```{r}
+gb <- train(modelL, data = regTrain,
+            method = "xgbTree",
+            trControl = ctrl,
+            tuneLength = 5)
+saveRDS(gb, "models/regression/gb.rds")
+gb 
+```
+
+```{r}
+test_results$gb <- predict(gb, regTest)
+
+postResample(pred = test_results$gb,  obs = test_results$test)
+```
+
 ### Neural Networks
+
+```{r}
+nn <- train(nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + checkin_month, # Removed some features with many levels
+            data = regTrain,
+            method = "neuralnet",
+            trControl = ctrl,
+            preProcess = c("nzv"),
+            tuneGrid = expand.grid(layer1 = c(4, 2),
+                                   layer2 = c(2, 1, 0),
+                                   layer3 = c(0))
+)
+saveRDS(nn, "models/regression/nn.rds")
+```
+
+```{r}
+test_results$nn <- predict(nn, regTest)
+
+postResample(pred = test_results$nn,  obs = test_results$test)
+```
 
 ### Ensemble
 
