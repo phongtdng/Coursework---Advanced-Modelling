@@ -21,6 +21,7 @@ library(MASS)
 library(conflicted)
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
+library(olsrr)
 ```
 
 # Data
@@ -282,9 +283,9 @@ df_final <- cbind(
   df %>% select(hotel_latitude,hotel_longitude),
   transformation
 ) %>% 
-  select(-start_amenities)
+  select(-c(start_amenities, start_bed_type))
 
-# saveRDS(df_final, "df_ready_for_ML.rds")
+saveRDS(df_final, "df_ready_for_ML.rds")
 ```
 
 # Classification
@@ -394,7 +395,8 @@ trees
 
 ```{r}
 set.seed(5436)
-df <- read_rds("df_ready_for_ML.rds")
+df <- read_rds("df_ready_for_ML.rds") %>% 
+  select(-total_cost_usd)
 
 trainIndex <- createDataPartition(df$cancelled, p = 0.8, list = FALSE)
 
@@ -408,6 +410,38 @@ test_results <- data.frame(test = regTest$nightly_rate_usd)
 ```{r}
 # 5-fold repeated 5 times train control
 ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
+```
+
+## Model Selection
+
+```{r}
+corr <- sort(cor(regTrain %>% select_if(is.numeric))["nightly_rate_usd",], decreasing = TRUE)
+corr <- data.frame(corr) %>% rownames_to_column()
+
+ggplot(corr, aes(x = rowname, y = corr)) +
+  geom_bar(stat = "identity", fill = "lightblue") + 
+  scale_x_discrete(limits= corr$rowname) +
+  labs(x = "Predictors", y = "Price", title = "Correlations") + 
+  theme(plot.title = element_text(hjust = 0, size = rel(1.5)),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+linFit <- lm(nightly_rate_usd ~ hotel_stars + agency_cancellation + leadtime + hotel_cancellation + client_cancellation + rate_offers + weekend_booking + amenities, data = regTrain)
+
+summary(linFit)
+```
+
+R^2^ is very low, around 10%. We will add some categorical variables.
+
+```{r}
+linFit <- lm(nightly_rate_usd ~ ., data = regTrain)
+
+summary(linFit)
+```
+
+```{r}
+ols_step_forward_p(linFit)
 ```
 
 ## Statistical Learning
