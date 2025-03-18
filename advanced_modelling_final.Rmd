@@ -16,6 +16,7 @@ library(GGally)
 library(forcats)
 library(mice)
 library(caret)
+library(rpart)
 ```
 
 # Data
@@ -342,11 +343,25 @@ logit
 knn <- train(cancelled ~., data = classTrain,
              method = "knn",
              trControl = ctrl,
-             tuneGrid = expand.grid(k = seq(1, 101, by = 2)))
+             tuneGrid = expand.grid(k = seq(1, 51, by = 2)),
+             metric = "ROC")
+
 knn
 ```
 
 ### Decision Trees
+
+```{r}
+# Model train
+trees <- train(cancelled ~., data = classTrain,
+               method = "rpart",
+               trControl = ctrl,
+               control = rpart.control(minsplit = 30, maxdepth = 10, cp=0.01),
+               tuneLength = 10,
+               metric="ROC")
+
+trees
+```
 
 ### Random Forests
 
