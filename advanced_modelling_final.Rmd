@@ -600,9 +600,46 @@ postResample(pred = test_results$sReg,  obs = test_results$test)
 
 ### Ridge Regression
 
+```{r}
+ridge_grid <- expand.grid(lambda = seq(0, 0.1, length = 100))
+
+ridge <- train(modelL, data = regTrain,
+               method = "ridge",
+               tuneGrid = ridge_grid,
+               preProcess = "nzv",
+               trControl = ctrl)
+saveRDS(ridge, "models/regression/ridge_tuned.rds")
+plot(ridge)
+```
+
 ### Lasso
 
+```{r}
+lasso_grid <- expand.grid(fraction = seq(0, 0.1, length = 100))
+
+lasso <- train(modelL, data = regTrain,
+               method = "lasso",
+               tuneGrid = lasso_grid,
+               preProcess = "nzv",
+               trControl = ctrl)
+saveRDS(lasso, "models/regression/lasso_tuned.rds")
+
+plot(lasso)
+```
+
 ### Elastic Net
+
+```{r}
+elastic_grid = expand.grid(alpha = seq(0, .2, 0.01), lambda = seq(0, .1, 0.01))
+
+eNet <- train(modelL, data = regTrain,
+              method='glmnet',
+              tuneGrid = elastic_grid,
+              trControl=ctrl)
+saveRDS(eNet, "models/regression/eNet_tuned.rds")
+
+plot(eNet)
+```
 
 ## Machine Learning
 
