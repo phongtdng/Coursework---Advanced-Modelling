@@ -389,14 +389,24 @@ rf
 gbm <- train(cancelled ~. , data = classTrain,
             method = "xgbTree",
             trControl = ctrl,
-            tuneLength = 15)
-saveRDS(rf, "models/classification/xgb.rds")
+            tuneLength = 10)
+saveRDS(gbm, "models/classification/xgb.rds")
 gbm
 ```
 
 ### Support Vector Machines
 
 ### Neural Networks
+
+```{r}
+# nn <- train(cancelled ~. , data = classTrain,
+#             method = "nnet",
+#             trControl = ctrl,
+#             tuneGrid = expand.grid(size = c(5),
+#                                    decay = c(0.1)))
+# saveRDS(nn, "models/classification/nn.rds")
+# nn
+```
 
 # Regression
 
