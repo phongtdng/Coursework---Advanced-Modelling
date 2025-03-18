@@ -481,7 +481,7 @@ Around 9-10 variables
 # Simple model 
 modelS <- nightly_rate_usd ~ free_breakfast + hotel_stars + hotel_longitude + hotel_latitude + start_commission_info + leadtime + hotel_cancellation + hotel_country + start_cancel_policy + start_rate_type
 # Complex model with all significant numeric and categorical features
-modelL <- nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + hotel_country + start_commission_info + start_cancel_policy + start_rate_type + gic_sector
+modelL <- nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + hotel_country + start_commission_info + start_cancel_policy + start_rate_type + gic_sector + checkin_month
 ```
 
 ## Statistical Learning
