@@ -507,7 +507,7 @@ ols_step_forward_p(linFit)
 plot(ols_step_forward_p(linFit))
 ```
 
-Around 9-10 variables
+Adding some categorical seems to improve the models a lot (by 30%!), which indicates that some categorical might be critical to the predictive models. For example, we can see from the graph that *hotel_longitude* and *hotel_country* improves the prediction by a lot more than other variables. This means that location might be one of the most important variables for predicting nightly rate. Overall, using 9-10 variables give us an R^2^ around 0.41 and after that adding more variables did not improve the model much.
 
 ```{r}
 # Simple model 
@@ -515,6 +515,8 @@ modelS <- nightly_rate_usd ~ free_breakfast + hotel_stars + hotel_longitude + ho
 # Complex model with all significant numeric and categorical features
 modelL <- nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + hotel_country + start_commission_info + start_cancel_policy + start_rate_type + gic_sector + checkin_month
 ```
+
+We build 2 model formulas, one less complicated with some numeric variables and categorical, the other with higher complexity, including all the significant numeric variables and categorical variables. For some statistical models, we will use modelS (lower complexity model) and for some others and machine learning model we will use modelL (higher complexity).
 
 ## Statistical Learning
 
@@ -530,20 +532,27 @@ basePred <-  rep(mean(regTrain$nightly_rate_usd), nrow(regTest))
 sqrt(mean((basePred - regTest$nightly_rate_usd)^2))
 ```
 
+We create a baseline model using mean of the nightly rate data of the train model as the prediction. It is rather difficult interpreting the performance as the feature had previously been transformed, normalized, and scaled in order to improve predictive power. Therefore, our objective will be to train models that have lower RMSE than the baseline model's and high R^2^ compared to all other models.
+
 ### Linear Regression
 
 ```{r}
-lm <- train(modelS , data = regTrain,
-            method = "lm",
-            trControl = ctrl) 
-saveRDS(lm, "models/regression/lm.rds")
+# lm <- train(modelS , data = regTrain,
+#             method = "lm",
+#             trControl = ctrl) 
+# saveRDS(lm, "models/regression/lm.rds")
+lm <- read_rds("models/regression/lm.rds")
 lm
 ```
+
+The multi-linear regression model was trained using the low complexity model (modelS). The model has lower RMSE in the train data set but we will compare the performance against the baseline model with the prediction results.
 
 ```{r}
 test_results$lm <- predict(lm, regTest)
 postResample(pred = test_results$lm, obs = test_results$test)
 ```
+
+The model performs a little less well on the testing set, with RMSE of 0.76 (compared to 0.78 on train data). R^2^, however, improved slightly (0.394 compared to 0.391).
 
 ```{r}
 ggplot(test_results, aes(x = lm, y = test)) +
@@ -554,27 +563,35 @@ ggplot(test_results, aes(x = lm, y = test)) +
   theme_bw()
 ```
 
+As the model's performance was only moderate, we can see the there is a lot of noise and error between the predicted and observed. We will further use other model methods to see whether we can improve the prediction.
+
 ### Forward Regression
 
 ```{r}
-fReg <- train(modelL, data = regTrain,
-              method = "leapForward",
-              tuneGrid = expand.grid(nvmax = 10:30),
-              trControl = ctrl)
-fReg
+# fReg <- train(modelL, data = regTrain,
+#               method = "leapForward",
+#               tuneGrid = expand.grid(nvmax = 10:30),
+#               trControl = ctrl)
+# fReg
+# 
+# # Tunning
+# fReg <- train(modelL, data = regTrain,
+#               method = "leapForward",
+#               tuneGrid = expand.grid(nvmax = 50:100),
+#               trControl = ctrl)
+# saveRDS(fReg, "models/regression/fReg_tuned.rds")
 
-# Tunning
-fReg <- train(modelL, data = regTrain,
-              method = "leapForward",
-              tuneGrid = expand.grid(nvmax = 50:100),
-              trControl = ctrl)
-saveRDS(fReg, "models/regression/fReg_tuned.rds")
+fReg <- read_rds("models/regression/fReg_tuned.rds")
 fReg
 ```
+
+With forward selection, we did not improve the model performance, it seems that using Forward Regression, we would need to use all the possible variables in order to obtain the best-performing model. We We first use nvmax equals from 10 to 30 and the best model was nvmax = 30. We then further tuned the model, setting nvmax from 50 to 100 and the best model was with nvmax = 100.
 
 ```{r}
 plot(fReg)
 ```
+
+We can see from the graph that the higher number of predictors used for the model, the less error that model has. Although, the improving per adding a predictor does not improve the model's performance by a lot.
 
 ```{r}
 # Predict
@@ -582,26 +599,34 @@ test_results$fReg <- predict(fReg, regTest)
 postResample(pred = test_results$fReg, obs = test_results$test)
 ```
 
+On test data set, the model performs better, with RMSE ofo 0.76 and R^2^ of 0.38. This is slightly worse than the multi-linear regression model and takes more time to train so the linear model is still better in practice.
+
 ### Backward Regression
 
 ```{r}
-bReg <- train(modelL, data = regTrain,
-              method = "leapBackward",
-              tuneGrid = expand.grid(nvmax = 10:30),
-              trControl = ctrl)
-bReg
-# Tuning
-bReg <- train(modelL, data = regTrain,
-              method = "leapBackward",
-              tuneGrid = expand.grid(nvmax = 80:100),
-              trControl = ctrl)
-saveRDS(bReg, "models/regression/bReg_tuned.rds")
+# bReg <- train(modelL, data = regTrain,
+#               method = "leapBackward",
+#               tuneGrid = expand.grid(nvmax = 10:30),
+#               trControl = ctrl)
+# bReg
+# # Tuning
+# bReg <- train(modelL, data = regTrain,
+#               method = "leapBackward",
+#               tuneGrid = expand.grid(nvmax = 80:100),
+#               trControl = ctrl)
+# saveRDS(bReg, "models/regression/bReg_tuned.rds")
+
+bReg <- read_rds("models/regression/bReg_tuned.rds")
 bReg
 ```
+
+Similarly with Backward Regression, it seems that we would need to use all the features to obtain the best performing model. The model was tuned similarly to Forward Regression, with first tuning of nvmax from 10 to 30 and second tuning with nvmax from 50 to 100.
 
 ```{r}
 plot(bReg)
 ```
+
+The slope for RSME again max number of predictors is also quite steep for Backward Regression model, indicating that adding more variables only gives incremental improvement to the model's performance.
 
 ```{r}
 # Predict
@@ -609,20 +634,28 @@ test_results$bReg <- predict(bReg, regTest)
 postResample(pred = test_results$bReg,  obs = test_results$test)
 ```
 
+On test data set, the model performs slightly better than the Forward Regression model. However, the difference between the 2 models is negligible and both are more computationally intensive than the simpler Multi-regression model.
+
 ### Stepwise Regression
 
 ```{r}
-sReg <- train(modelL, data = regTrain,
-              method = "leapSeq",
-              tuneGrid = expand.grid(nvmax = 80:100),
-              trControl = ctrl)
-saveRDS(sReg, "models/regression/sReg_tuned.rds")
+# sReg <- train(modelL, data = regTrain,
+#               method = "leapSeq",
+#               tuneGrid = expand.grid(nvmax = 80:100),
+#               trControl = ctrl)
+# saveRDS(sReg, "models/regression/sReg_tuned.rds")
+
+sReg <- read_rds("models/regression/sReg_tuned.rds")
 sReg
 ```
+
+With Stepwise Regression, the model did not improve either. With more max number of variables, the model performs better but even with 100 maximum predictors, the model's performance is still worse than the previous models.
 
 ```{r}
 plot(sReg)
 ```
+
+The slope of the Stepwise Regression model's nvmax and RMSE is steep and for each higher max number of predictors, RSME reduces very little (roughtly 0.005 decline per 5 max number of predictors added).
 
 ```{r}
 # Predict
@@ -630,76 +663,135 @@ test_results$sReg <- predict(sReg, regTest)
 postResample(pred = test_results$sReg,  obs = test_results$test)
 ```
 
+On test data, the Stepwise Regression model, however, performs better than the previous models. Although the improvement was little, since it performs better on new data, it means that the model might be less biased than the other models. Out of the all previously trained models, Stepwise Regression might be the best performing so far, at least on test data. To really check whether the model performs better on new data, we would need to have more test set and evaluate the model's performance on them.
+
 ### Ridge Regression
 
 ```{r}
-ridge_grid <- expand.grid(lambda = seq(0, 0.1, length = 100))
+# ridge_grid <- expand.grid(lambda = seq(0, 0.1, length = 100))
+# 
+# ridge <- train(modelL, data = regTrain,
+#                method = "ridge",
+#                tuneGrid = ridge_grid,
+#                preProcess = "nzv",
+#                trControl = ctrl)
+# saveRDS(ridge, "models/regression/ridge_tuned.rds")
 
-ridge <- train(modelL, data = regTrain,
-               method = "ridge",
-               tuneGrid = ridge_grid,
-               preProcess = "nzv",
-               trControl = ctrl)
-saveRDS(ridge, "models/regression/ridge_tuned.rds")
+ridge <- read_rds("models/regression/ridge_tuned.rds")
+```
+
+For Ridge Regression, we tune the hyperparameter lambda from 0 to 0.1 with 100 steps. The best lambda was 0.011 and with this setting the model's performance is only slightly better than the base model and a lot worse than the previous models.
+
+```{r}
 plot(ridge)
 ```
+
+Plot the model with each hyperparameter iteration, we see that the best range for lambda is between 0 and 0.02 where RMSE's are the lowest. Since it is a curve with dip between this range, we would not be able to find a tuning that would improve the model more than its current performance. Therefore, Ridge Regression might not be the best model for our target variable. We will check this with the test data.
 
 ```{r}
 test_results$ridge <- predict(ridge, regTest)
 postResample(pred = test_results$ridge,  obs = test_results$test)
 ```
 
+The model's performance is better than the train data. However, it is still worse than all the previous models.
+
 ### Lasso
 
 ```{r}
-lasso_grid <- expand.grid(fraction = seq(0, 0.1, length = 100))
+# lasso_grid <- expand.grid(fraction = seq(0, 0.1, length = 100))
+# 
+# lasso <- train(modelL, data = regTrain,
+#                method = "lasso",
+#                tuneGrid = lasso_grid,
+#                preProcess = "nzv",
+#                trControl = ctrl)
+# saveRDS(lasso, "models/regression/lasso.rds")
 
-lasso <- train(modelL, data = regTrain,
-               method = "lasso",
-               tuneGrid = lasso_grid,
-               preProcess = "nzv",
-               trControl = ctrl)
-saveRDS(lasso, "models/regression/lasso_tuned.rds")
+lasso <- read_rds("models/regression/lasso.rds")
+lasso
+```
 
+Lasso Regression also has a very bad performance on the train data and even lower than the baseline model.
+
+```{r}
 plot(lasso)
 ```
+
+However, looking at the model's performance for each fraction iteration, it seems that we can better tune the model to improve its performance. The current best performance is at fraction equal to 0.10. We could further tune the data setting fraction after this range to identify the lowest RMSE that the model could produce.
+
+```{r}
+#lasso_grid <- expand.grid(fraction = seq(0.1, 1, length = 100))
+# 
+#lasso_tuned <- train(modelL, data = regTrain,
+#                method = "lasso",
+#                tuneGrid = lasso_grid,
+#                preProcess = "nzv",
+#                trControl = ctrl)
+#saveRDS(lasso_tuned, "models/regression/lasso_tuned.rds")
+
+lasso_tuned <- read_rds("models/regression/lasso_tuned.rds")
+lasso_tuned
+```
+
+```{r}
+plot(lasso_tuned)
+```
+
+It seems that after tunning with fraction from 0.1 to 1. The best models for Lasso Regression is with fraction equal to 0.927. However, the performance of the model is still not much better than the previous models.
 
 ```{r}
 test_results$lasso <- predict(lasso, regTest)
 postResample(pred = test_results$lasso,  obs = test_results$test)
 ```
 
+On test data, the model also does not perform well. Its performance is worse than the baseline model and we perhaps should not consider Lasso as a predictive model for our case.
+
 ### Elastic Net
 
 ```{r}
-elastic_grid = expand.grid(alpha = seq(0, .2, 0.01), lambda = seq(0, .1, 0.01))
+# elastic_grid = expand.grid(alpha = seq(0, .2, 0.01), lambda = seq(0, .1, 0.01))
+# 
+# eNet <- train(modelL, data = regTrain,
+#               method='glmnet',
+#               tuneGrid = elastic_grid,
+#               trControl=ctrl)
+# saveRDS(eNet, "models/regression/eNet_tuned.rds")
 
-eNet <- train(modelL, data = regTrain,
-              method='glmnet',
-              tuneGrid = elastic_grid,
-              trControl=ctrl)
-saveRDS(eNet, "models/regression/eNet_tuned.rds")
-
-plot(eNet)
+eNet <- read_rds("models/regression/eNet_tuned.rds")
+eNet
 ```
+
+Elastic Net model seems to perform a lot better at alpha equal to 0.12 and lambda equal to 0.01 than Ridge and Lasso Regression models. Although, the performance of the model is only slightly better than Linear, Forward, and Backward Regression.
 
 ```{r}
 test_results$eNet <- predict(eNet, regTest)
 postResample(pred = test_results$eNet,  obs = test_results$test)
 ```
 
+On test data, however, the model performs slightly better. Compared to all previous models' performance on test set, Elastic Net performs better than all of them. However, this result is still not significantly better than Multi-linear Regression or Stepwise Regression but only a little.
+
 ## Machine Learning
 
 ### kNN
 
 ```{r}
-knn <- train(modelL, data = regTrain,
-             method = "kknn",
-             timeGrid = data.frame(kmax=seq(1,15,2),distance=2,kernel='optimal'),
-             trControl = ctrl)
-saveRDS(knn, "models/regression/knn.RDS")
+# knn <- train(modelL, data = regTrain,
+#              method = "kknn",
+#              timeGrid = data.frame(kmax=seq(1,15,2),distance=2,kernel='optimal'),
+#              trControl = ctrl)
+# saveRDS(knn, "models/regression/knn.RDS")
+
+knn <- read_rds("models/regression/knn.RDS")
+knn
+```
+
+With the Machine Learning model k-Nearest Neighbors, the model performs best where kmax = 9, distance = 2, and kernal = 2 based on our hyperparameter setting. We could further tune this model with different hyperparameter settings. However, kNN model is known to perform better on a different set of problems where physical network plays an important role in predicting the dependent variable, which is not our case.
+
+```{r}
 plot(knn)
 ```
+
+By plotting the model performance against max number of neighbors selected, we can see that the model is likely to be able to improve with higher set of max neighbors and perhaps other hyperparameters.
 
 ```{r}
 test_results$knn <- predict(knn, regTest)
@@ -707,85 +799,119 @@ test_results$knn <- predict(knn, regTest)
 postResample(pred = test_results$knn,  obs = test_results$test)
 ```
 
+On test data, kNN model does not perform better than the majority of regression models. The model performs better than the baseline but it is a lot more computationally intensive than some regression model with a simpler formula.
+
 ### Random Forest
 
 ```{r}
-rfGrid <- expand.grid(
-  .mtry = seq(2,4),
-  .splitrule = "variance",
-  .min.node.size = seq(1,4)
-)
+# rfGrid <- expand.grid(
+#   .mtry = seq(2,4),
+#   .splitrule = "variance",
+#   .min.node.size = seq(1,4)
+# )
+# 
+# rf <- train(modelL, data = regTrain,
+#             method = "ranger",
+#             trControl = ctrl,
+#             tuneGrid = rfGrid,
+#             importance = "impurity")
+# saveRDS(rf, "models/regression/rf.rds")
 
-rf <- train(modelL, data = regTrain,
-            method = "ranger",
-            trControl = ctrl,
-            tuneGrid = rfGrid,
-            importance = "impurity")
-saveRDS(rf, "models/regression/rf.rds")
+rf <- read_rds("models/regression/rf.rds")
 rf
 ```
 
+On training the model using Random Forest, we first tune the model with mtry from 2 to 4, splitrule = variance and min.node.size from 1 to 4. The best performing model was at mtry = 4 and min.node.size = 2, with RMSE around 0.84 and R^2^ around 0.40. This is not better than the best performing models that we have so far. We will further tune the model to improve its performance.
+
 ```{r}
-plot(rf)
+plot(rf)w
 ```
+
+The model performs best with 4 randomly selected predictors and min.node.size = 2. We, therefore, will tune the model with a higher number of maximum randomly selected predictors to see whether the performance of the model improves.
 
 ```{r}
 impVar <- varImp(rf)
-plot(importance)
+plot(impVar)
 ```
 
 ```{r}
-rfGrid <- expand.grid(
-  .mtry = seq(4,8),
-  .splitrule = c("variance", "extratrees"),
-  .min.node.size = seq(1,6)
-)
+# rfGrid <- expand.grid(
+#   .mtry = seq(4,8),
+#   .splitrule = c("variance", "extratrees"),
+#   .min.node.size = seq(1,6)
+# )
+# 
+# rf2 <- train(modelL, data = regTrain,
+#             method = "ranger",
+#             trControl = ctrl,
+#             tuneGrid = rfGrid,
+#             importance = "impurity")
+# saveRDS(rf2, "models/regression/rf2.rds")
 
-rf2 <- train(modelL, data = regTrain,
-            method = "ranger",
-            trControl = ctrl,
-            tuneGrid = rfGrid,
-            importance = "impurity")
-saveRDS(rf2, "models/regression/rf2.rds")
-rf2
+rf_tuned <- read_rds("models/regression/rf2.rds")
+rf_tuned
 ```
 
+After tuning with mtry from 4 to 8, splitrule between variance and extratrees, and min.node.size = 1, the best performing model was set with mtry = 8, splitrule = variance, and min.node.size = 1. At this parameter setting, the Random Forest model takes place as the best-performing all of all the current models with RMSE around 0.75 and R^2^ around 0.50. This is moderately better than all of the previous models that we trained but still in practice, it is not a very high R^2^ .
+
 ```{r}
-test_results$rf <- predict(rf, regTest)
+test_results$rf <- predict(rf_tuned, regTest)
 
 postResample(pred = test_results$rf,  obs = test_results$test)
 
 ```
 
+The Random Forest model performs slightly better on test data set, with RMSE down to 0.71 and R^2^ around 0.51. Again, this is the best model that we have trained so far but also it is a lot more computationally expensive than the all of the current models.
+
 ### Gradient Boosting
 
 ```{r}
-gb <- train(modelL, data = regTrain,
-            method = "xgbTree",
-            trControl = ctrl,
-            tuneLength = 5)
-saveRDS(gb, "models/regression/gb.rds")
+# gb <- train(modelL, data = regTrain,
+#             method = "xgbTree",
+#             trControl = ctrl,
+#             tuneLength = 5)
+# saveRDS(gb, "models/regression/gb.rds")
+
+gb <- read_rds("models/regression/gb.rds")
 gb 
 ```
 
-```{r}
-gbTune <- expand.grid(nrounds = c(500,1000), max_depth = c(5,6,7), eta = c(0.01, 0.1, 1),
-                                         gamma = c(1, 2, 3), colsample_bytree = c(1, 2),
-                                         min_child_weight = c(1), subsample = c(0.2,0.5,0.8))
+At tuneLength =5, the best performing Gradient Boosting Machine model was set with values of nrounds = 250, max_depth = 5, eta = 0.3, gamma = 0, colsample_bytree = 0.6, and min_child_weight = 1. The model also performs better than Random Forest and has much higher accuracy than all of the models (RMSE around 0.61 and R^2^ around 0.62).
 
-gb_tuned <- train(modelL, data = regTrain,
-            method = "xgbTree",
-            trControl = ctrl,
-            tuneGrid = gbTune)
-saveRDS(gb_tuned, "models/regression/gb_tuned.rds")
+```{r}
+plot(gb)
+```
+
+Looking at the plots of the model's performance at different hyperparamter settings, we can see that the model tends to do better at higher iterations (nrounds), higher max.depth, lower shrinkage (eta), and higher colsample_bytree. We will tune accordingly to further improve the model's performance.
+
+```{r}
+# gbTune <- expand.grid(nrounds = c(500,1000), 
+#                       max_depth = c(5,6,7), 
+#                       eta = c(0.01, 0.1, 1),
+#                       gamma = c(1, 2, 3), 
+#                       colsample_bytree = c(1, 2),
+#                       min_child_weight = c(1), 
+#                       subsample = c(0.2,0.5,0.8))
+# 
+# gb_tuned <- train(modelL, data = regTrain,
+#             method = "xgbTree",
+#             trControl = ctrl,
+#             tuneGrid = gbTune)
+# saveRDS(gb_tuned, "models/regression/gb_tuned.rds")
+
+gb_tuned <- read_rds("models/regression/gb_tuned.rds")
 gb_tuned
 ```
 
+After tuning, our Gradient Boosting Machine model slightly improved with RMSE around 0.60 and R^2^ around 0.63. This is only a slight improvement considering the computation time was a lot longer. It seems that better tunning might be necessary to see a significant improvement in the model. It seems that to get better performance, we would need to try with higher nrounds, max_depth = 5, lower eta than 0.1, gamma around 1, colsample_bytree betwene 0.6 and 1, min_child_weight = 1, and subsample lower than 1,
+
 ```{r}
-test_results$gb <- predict(gb, regTest)
+test_results$gb <- predict(gb_tuned, regTest)
 
 postResample(pred = test_results$gb,  obs = test_results$test)
 ```
+
+On test data, Gradient Boosting Machine remains the best-performing model out of all the models that is able to explain around 62% of the variance in nightly rate and predict on average +-0.60 units from the actual values.
 
 ### Neural Networks
 
