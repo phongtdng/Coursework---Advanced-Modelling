@@ -389,9 +389,21 @@ rf
 gbm <- train(cancelled ~. , data = classTrain,
             method = "xgbTree",
             trControl = ctrl,
-            tuneLength = 10)
+            tuneLength = 5)
 saveRDS(gbm, "models/classification/xgb.rds")
 gbm
+```
+
+```{r}
+gbTune <- expand.grid(nrounds = c(500,1000), max_depth = c(5,6,7), eta = c(0.01, 0.1, 1),
+                                         gamma = c(1, 2, 3), colsample_bytree = c(1, 2),
+                                         min_child_weight = c(1), subsample = c(0.2,0.5,0.8))
+gbm_tuned <- train(cancelled ~. , data = classTrain,
+            method = "xgbTree",
+            trControl = ctrl,
+            tuneGrid = gbTune)
+saveRDS(gbm_tuned, "models/classification/xgb_tuned.rds")
+gbm_tuned
 ```
 
 ### Support Vector Machines
