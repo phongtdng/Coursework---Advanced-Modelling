@@ -485,7 +485,7 @@ ols_step_forward_p(linFit)
 plot(ols_step_forward_p(linFit))
 ```
 
-Around 9-10 variables
+Adding some categorical seems to improve the models a lot (by 30%!), which indicates that some categorical might be critical to the predictive models. For example, we can see from the graph that *hotel_longitude* and *hotel_country* improves the prediction by a lot more than other variables. This means that location might be one of the most important variables for predicting nightly rate. Overall, using 9-10 variables give us an R^2^ around 0.41 and after that adding more variables did not improve the model much.
 
 ```{r}
 # Simple model 
@@ -493,6 +493,8 @@ modelS <- nightly_rate_usd ~ free_breakfast + hotel_stars + hotel_longitude + ho
 # Complex model with all significant numeric and categorical features
 modelL <- nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + hotel_country + start_commission_info + start_cancel_policy + start_rate_type + gic_sector + checkin_month
 ```
+
+We build 2 model formulas, one less complicated with some numeric variables and categorical, the other with higher complexity, including all the significant numeric variables and categorical variables. For some statistical models, we will use modelS (lower complexity model) and for some others and machine learning model we will use modelL (higher complexity).
 
 ## Statistical Learning
 
@@ -508,20 +510,27 @@ basePred <-  rep(mean(regTrain$nightly_rate_usd), nrow(regTest))
 sqrt(mean((basePred - regTest$nightly_rate_usd)^2))
 ```
 
+We create a baseline model using mean of the nightly rate data of the train model as the prediction. It is rather difficult interpreting the performance as the feature had previously been transformed, normalized, and scaled in order to improve predictive power. Therefore, our objective will be to train models that have lower RMSE than the baseline model's and high R^2^ compared to all other models.
+
 ### Linear Regression
 
 ```{r}
-lm <- train(modelS , data = regTrain,
-            method = "lm",
-            trControl = ctrl) 
-saveRDS(lm, "models/regression/lm.rds")
+# lm <- train(modelS , data = regTrain,
+#             method = "lm",
+#             trControl = ctrl) 
+# saveRDS(lm, "models/regression/lm.rds")
+lm <- read_rds("models/regression/lm.rds")
 lm
 ```
+
+The multi-linear regression model was trained using the low complexity model (modelS). The model has lower RMSE in the train data set but we will compare the performance against the baseline model with the prediction results.
 
 ```{r}
 test_results$lm <- predict(lm, regTest)
 postResample(pred = test_results$lm, obs = test_results$test)
 ```
+
+The model performs a little less well on the testing set, with RMSE of 0.76 (compared to 0.78 on train data). R^2^, however, improved slightly (0.394 compared to 0.391).
 
 ```{r}
 ggplot(test_results, aes(x = lm, y = test)) +
@@ -531,6 +540,8 @@ ggplot(test_results, aes(x = lm, y = test)) +
   geom_abline(intercept = 0, slope = 1, colour = "blue") +
   theme_bw()
 ```
+
+As the model's performance was only moderate, we can see the there is a lot of noise and error between the predicted and observed. We will further use other model methods to see whether we can improve the prediction.
 
 ### Forward Regression
 
