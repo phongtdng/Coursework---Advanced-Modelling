@@ -546,30 +546,38 @@ As the model's performance was only moderate, we can see the there is a lot of n
 ### Forward Regression
 
 ```{r}
-fReg <- train(modelL, data = regTrain,
-              method = "leapForward",
-              tuneGrid = expand.grid(nvmax = 10:30),
-              trControl = ctrl)
-fReg
+# fReg <- train(modelL, data = regTrain,
+#               method = "leapForward",
+#               tuneGrid = expand.grid(nvmax = 10:30),
+#               trControl = ctrl)
+# fReg
+# 
+# # Tunning
+# fReg <- train(modelL, data = regTrain,
+#               method = "leapForward",
+#               tuneGrid = expand.grid(nvmax = 50:100),
+#               trControl = ctrl)
+# saveRDS(fReg, "models/regression/fReg_tuned.rds")
 
-# Tunning
-fReg <- train(modelL, data = regTrain,
-              method = "leapForward",
-              tuneGrid = expand.grid(nvmax = 50:100),
-              trControl = ctrl)
-saveRDS(fReg, "models/regression/fReg_tuned.rds")
+fReg <- read_rds("models/regression/fReg_tuned.rds")
 fReg
 ```
+
+With forward selection, we did not improve the model performance, it seems that using Forward Regression, we would need to use all the possible variables in order to obtain the best-performing model. We We first use nvmax equals from 10 to 30 and the best model was nvmax = 30. We then further tuned the model, setting nvmax from 50 to 100 and the best model was with nvmax = 100.
 
 ```{r}
 plot(fReg)
 ```
+
+We can see from the graph that the higher number of predictors used for the model, the less error that model has. Although, the improving per adding a predictor does not improve the model's performance by a lot.
 
 ```{r}
 # Predict
 test_results$fReg <- predict(fReg, regTest)
 postResample(pred = test_results$fReg, obs = test_results$test)
 ```
+
+On test data set, the model performs better, with RMSE ofo 0.76 and R^2^ of 0.38. This is slightly worse than the multi-linear regression model and takes more time to train so the linear model is still better in practice.
 
 ### Backward Regression
 
