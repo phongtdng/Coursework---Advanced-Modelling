@@ -782,52 +782,64 @@ On test data, kNN model does not perform better than the majority of regression 
 ### Random Forest
 
 ```{r}
-rfGrid <- expand.grid(
-  .mtry = seq(2,4),
-  .splitrule = "variance",
-  .min.node.size = seq(1,4)
-)
+# rfGrid <- expand.grid(
+#   .mtry = seq(2,4),
+#   .splitrule = "variance",
+#   .min.node.size = seq(1,4)
+# )
+# 
+# rf <- train(modelL, data = regTrain,
+#             method = "ranger",
+#             trControl = ctrl,
+#             tuneGrid = rfGrid,
+#             importance = "impurity")
+# saveRDS(rf, "models/regression/rf.rds")
 
-rf <- train(modelL, data = regTrain,
-            method = "ranger",
-            trControl = ctrl,
-            tuneGrid = rfGrid,
-            importance = "impurity")
-saveRDS(rf, "models/regression/rf.rds")
+rf <- read_rds("models/regression/rf.rds")
 rf
 ```
 
+On training the model using Random Forest, we first tune the model with mtry from 2 to 4, splitrule = variance and min.node.size from 1 to 4. The best performing model was at mtry = 4 and min.node.size = 2, with RMSE around 0.84 and R^2^ around 0.40. This is not better than the best performing models that we have so far. We will further tune the model to improve its performance.
+
 ```{r}
-plot(rf)
+plot(rf)w
 ```
+
+The model performs best with 4 randomly selected predictors and min.node.size = 2. We, therefore, will tune the model with a higher number of maximum randomly selected predictors to see whether the performance of the model improves.
 
 ```{r}
 impVar <- varImp(rf)
-plot(importance)
+plot(impVar)
 ```
 
 ```{r}
-rfGrid <- expand.grid(
-  .mtry = seq(4,8),
-  .splitrule = c("variance", "extratrees"),
-  .min.node.size = seq(1,6)
-)
+# rfGrid <- expand.grid(
+#   .mtry = seq(4,8),
+#   .splitrule = c("variance", "extratrees"),
+#   .min.node.size = seq(1,6)
+# )
+# 
+# rf2 <- train(modelL, data = regTrain,
+#             method = "ranger",
+#             trControl = ctrl,
+#             tuneGrid = rfGrid,
+#             importance = "impurity")
+# saveRDS(rf2, "models/regression/rf2.rds")
 
-rf2 <- train(modelL, data = regTrain,
-            method = "ranger",
-            trControl = ctrl,
-            tuneGrid = rfGrid,
-            importance = "impurity")
-saveRDS(rf2, "models/regression/rf2.rds")
-rf2
+rf_tuned <- read_rds("models/regression/rf2.rds")
+rf_tuned
 ```
 
+After tuning with mtry from 4 to 8, splitrule between variance and extratrees, and min.node.size = 1, the best performing model was set with mtry = 8, splitrule = variance, and min.node.size = 1. At this parameter setting, the Random Forest model takes place as the best-performing all of all the current models with RMSE around 0.75 and R^2^ around 0.50. This is moderately better than all of the previous models that we trained but still in practice, it is not a very high R^2^ .
+
 ```{r}
-test_results$rf <- predict(rf, regTest)
+test_results$rf <- predict(rf_tuned, regTest)
 
 postResample(pred = test_results$rf,  obs = test_results$test)
 
 ```
+
+The Random Forest model performs slightly better on test data set, with RMSE down to 0.71 and R^2^ around 0.51. Again, this is the best model that we have trained so far but also it is a lot more computationally expensive than the all of the current models.
 
 ### Gradient Boosting
 
