@@ -582,29 +582,37 @@ On test data set, the model performs better, with RMSE ofo 0.76 and R^2^ of 0.38
 ### Backward Regression
 
 ```{r}
-bReg <- train(modelL, data = regTrain,
-              method = "leapBackward",
-              tuneGrid = expand.grid(nvmax = 10:30),
-              trControl = ctrl)
-bReg
-# Tuning
-bReg <- train(modelL, data = regTrain,
-              method = "leapBackward",
-              tuneGrid = expand.grid(nvmax = 80:100),
-              trControl = ctrl)
-saveRDS(bReg, "models/regression/bReg_tuned.rds")
+# bReg <- train(modelL, data = regTrain,
+#               method = "leapBackward",
+#               tuneGrid = expand.grid(nvmax = 10:30),
+#               trControl = ctrl)
+# bReg
+# # Tuning
+# bReg <- train(modelL, data = regTrain,
+#               method = "leapBackward",
+#               tuneGrid = expand.grid(nvmax = 80:100),
+#               trControl = ctrl)
+# saveRDS(bReg, "models/regression/bReg_tuned.rds")
+
+bReg <- read_rds("models/regression/bReg_tuned.rds")
 bReg
 ```
+
+Similarly with Backward Regression, it seems that we would need to use all the features to obtain the best performing model. The model was tuned similarly to Forward Regression, with first tuning of nvmax from 10 to 30 and second tuning with nvmax from 50 to 100.
 
 ```{r}
 plot(bReg)
 ```
+
+The slope for RSME again max number of predictors is also quite steep for Backward Regression model, indicating that adding more variables only gives incremental improvement to the model's performance.
 
 ```{r}
 # Predict
 test_results$bReg <- predict(bReg, regTest)
 postResample(pred = test_results$bReg,  obs = test_results$test)
 ```
+
+On test data set, the model performs slightly better than the Forward Regression model. However, the difference between the 2 models is negligible and both are more computationally intensive than the simpler Multi-regression model.
 
 ### Stepwise Regression
 
