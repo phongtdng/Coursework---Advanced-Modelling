@@ -844,32 +844,52 @@ The Random Forest model performs slightly better on test data set, with RMSE dow
 ### Gradient Boosting
 
 ```{r}
-gb <- train(modelL, data = regTrain,
-            method = "xgbTree",
-            trControl = ctrl,
-            tuneLength = 5)
-saveRDS(gb, "models/regression/gb.rds")
+# gb <- train(modelL, data = regTrain,
+#             method = "xgbTree",
+#             trControl = ctrl,
+#             tuneLength = 5)
+# saveRDS(gb, "models/regression/gb.rds")
+
+gb <- read_rds("models/regression/gb.rds")
 gb 
 ```
 
-```{r}
-gbTune <- expand.grid(nrounds = c(500,1000), max_depth = c(5,6,7), eta = c(0.01, 0.1, 1),
-                                         gamma = c(1, 2, 3), colsample_bytree = c(1, 2),
-                                         min_child_weight = c(1), subsample = c(0.2,0.5,0.8))
+At tuneLength =5, the best performing Gradient Boosting Machine model was set with values of nrounds = 250, max_depth = 5, eta = 0.3, gamma = 0, colsample_bytree = 0.6, and min_child_weight = 1. The model also performs better than Random Forest and has much higher accuracy than all of the models (RMSE around 0.61 and R^2^ around 0.62).
 
-gb_tuned <- train(modelL, data = regTrain,
-            method = "xgbTree",
-            trControl = ctrl,
-            tuneGrid = gbTune)
-saveRDS(gb_tuned, "models/regression/gb_tuned.rds")
+```{r}
+plot(gb)
+```
+
+Looking at the plots of the model's performance at different hyperparamter settings, we can see that the model tends to do better at higher iterations (nrounds), higher max.depth, lower shrinkage (eta), and higher colsample_bytree. We will tune accordingly to further improve the model's performance.
+
+```{r}
+# gbTune <- expand.grid(nrounds = c(500,1000), 
+#                       max_depth = c(5,6,7), 
+#                       eta = c(0.01, 0.1, 1),
+#                       gamma = c(1, 2, 3), 
+#                       colsample_bytree = c(1, 2),
+#                       min_child_weight = c(1), 
+#                       subsample = c(0.2,0.5,0.8))
+# 
+# gb_tuned <- train(modelL, data = regTrain,
+#             method = "xgbTree",
+#             trControl = ctrl,
+#             tuneGrid = gbTune)
+# saveRDS(gb_tuned, "models/regression/gb_tuned.rds")
+
+gb_tuned <- read_rds("models/regression/gb_tuned.rds")
 gb_tuned
 ```
 
+After tuning, our Gradient Boosting Machine model slightly improved with RMSE around 0.60 and R^2^ around 0.63. This is only a slight improvement considering the computation time was a lot longer. It seems that better tunning might be necessary to see a significant improvement in the model. It seems that to get better performance, we would need to try with higher nrounds, max_depth = 5, lower eta than 0.1, gamma around 1, colsample_bytree betwene 0.6 and 1, min_child_weight = 1, and subsample lower than 1,
+
 ```{r}
-test_results$gb <- predict(gb, regTest)
+test_results$gb <- predict(gb_tuned, regTest)
 
 postResample(pred = test_results$gb,  obs = test_results$test)
 ```
+
+On test data, Gradient Boosting Machine remains the best-performing model out of all the models that is able to explain around 62% of the variance in nightly rate and predict on average +-0.60 units from the actual values.
 
 ### Neural Networks
 
