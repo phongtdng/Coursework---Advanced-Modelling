@@ -687,15 +687,42 @@ rfGrid <- expand.grid(
 rf <- train(modelL, data = regTrain,
             method = "ranger",
             trControl = ctrl,
-            tuneGrid = rfGrid)
+            tuneGrid = rfGrid,
+            importance = "impurity")
 saveRDS(rf, "models/regression/rf.rds")
 rf
+```
+
+```{r}
+plot(rf)
+```
+
+```{r}
+impVar <- varImp(rf)
+plot(importance)
+```
+
+```{r}
+rfGrid <- expand.grid(
+  .mtry = seq(4,8),
+  .splitrule = c("variance", "extratrees"),
+  .min.node.size = seq(1,6)
+)
+
+rf2 <- train(modelL, data = regTrain,
+            method = "ranger",
+            trControl = ctrl,
+            tuneGrid = rfGrid,
+            importance = "impurity")
+saveRDS(rf2, "models/regression/rf2.rds")
+rf2
 ```
 
 ```{r}
 test_results$rf <- predict(rf, regTest)
 
 postResample(pred = test_results$rf,  obs = test_results$test)
+
 ```
 
 ### Gradient Boosting
@@ -706,6 +733,19 @@ gb <- train(modelL, data = regTrain,
             trControl = ctrl,
             tuneLength = 5)
 saveRDS(gb, "models/regression/gb.rds")
+gb 
+```
+
+```{r}
+gbTune <- expand.grid(nrounds = c(500,1000), max_depth = c(5,6,7), eta = c(0.01, 0.1, 1),
+                                         gamma = c(1, 2, 3), colsample_bytree = c(1, 2),
+                                         min_child_weight = c(1), subsample = c(0.2,0.5,0.8))
+
+gb_tuned <- train(modelL, data = regTrain,
+            method = "xgbTree",
+            trControl = ctrl,
+            tuneGrid = gbTune)
+saveRDS(gb_tuned, "models/regression/gb_tuned.rds")
 gb 
 ```
 
