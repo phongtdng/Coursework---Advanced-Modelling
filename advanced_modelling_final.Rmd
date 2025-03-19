@@ -646,21 +646,32 @@ On test data, the Stepwise Regression model, however, performs better than the p
 ### Ridge Regression
 
 ```{r}
-ridge_grid <- expand.grid(lambda = seq(0, 0.1, length = 100))
+# ridge_grid <- expand.grid(lambda = seq(0, 0.1, length = 100))
+# 
+# ridge <- train(modelL, data = regTrain,
+#                method = "ridge",
+#                tuneGrid = ridge_grid,
+#                preProcess = "nzv",
+#                trControl = ctrl)
+# saveRDS(ridge, "models/regression/ridge_tuned.rds")
 
-ridge <- train(modelL, data = regTrain,
-               method = "ridge",
-               tuneGrid = ridge_grid,
-               preProcess = "nzv",
-               trControl = ctrl)
-saveRDS(ridge, "models/regression/ridge_tuned.rds")
+ridge <- read_rds("models/regression/ridge_tuned.rds")
+```
+
+For Ridge Regression, we tune the hyperparameter lambda from 0 to 0.1 with 100 steps. The best lambda was 0.011 and with this setting the model's performance is only slightly better than the base model and a lot worse than the previous models.
+
+```{r}
 plot(ridge)
 ```
+
+Plot the model with each hyperparameter iteration, we see that the best range for lambda is between 0 and 0.02 where RMSE's are the lowest. Since it is a curve with dip between this range, we would not be able to find a tuning that would improve the model more than its current performance. Therefore, Ridge Regression might not be the best model for our target variable. We will check this with the test data.
 
 ```{r}
 test_results$ridge <- predict(ridge, regTest)
 postResample(pred = test_results$ridge,  obs = test_results$test)
 ```
+
+The model's performance is better than the train data. However, it is still worse than all the previous models.
 
 ### Lasso
 
