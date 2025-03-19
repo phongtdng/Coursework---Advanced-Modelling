@@ -727,21 +727,26 @@ On test data, the model also does not perform well. Its performance is worse tha
 ### Elastic Net
 
 ```{r}
-elastic_grid = expand.grid(alpha = seq(0, .2, 0.01), lambda = seq(0, .1, 0.01))
+# elastic_grid = expand.grid(alpha = seq(0, .2, 0.01), lambda = seq(0, .1, 0.01))
+# 
+# eNet <- train(modelL, data = regTrain,
+#               method='glmnet',
+#               tuneGrid = elastic_grid,
+#               trControl=ctrl)
+# saveRDS(eNet, "models/regression/eNet_tuned.rds")
 
-eNet <- train(modelL, data = regTrain,
-              method='glmnet',
-              tuneGrid = elastic_grid,
-              trControl=ctrl)
-saveRDS(eNet, "models/regression/eNet_tuned.rds")
-
-plot(eNet)
+eNet <- read_rds("models/regression/eNet_tuned.rds")
+eNet
 ```
+
+Elastic Net model seems to perform a lot better at alpha equal to 0.12 and lambda equal to 0.01 than Ridge and Lasso Regression models. Although, the performance of the model is only slightly better than Linear, Forward, and Backward Regression.
 
 ```{r}
 test_results$eNet <- predict(eNet, regTest)
 postResample(pred = test_results$eNet,  obs = test_results$test)
 ```
+
+On test data, however, the model performs slightly better. Compared to all previous models' performance on test set, Elastic Net performs better than all of them. However, this result is still not significantly better than Multi-linear Regression or Stepwise Regression but only a little.
 
 ## Machine Learning
 
