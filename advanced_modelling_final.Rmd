@@ -676,22 +676,53 @@ The model's performance is better than the train data. However, it is still wors
 ### Lasso
 
 ```{r}
-lasso_grid <- expand.grid(fraction = seq(0, 0.1, length = 100))
+# lasso_grid <- expand.grid(fraction = seq(0, 0.1, length = 100))
+# 
+# lasso <- train(modelL, data = regTrain,
+#                method = "lasso",
+#                tuneGrid = lasso_grid,
+#                preProcess = "nzv",
+#                trControl = ctrl)
+# saveRDS(lasso, "models/regression/lasso.rds")
 
-lasso <- train(modelL, data = regTrain,
-               method = "lasso",
-               tuneGrid = lasso_grid,
-               preProcess = "nzv",
-               trControl = ctrl)
-saveRDS(lasso, "models/regression/lasso_tuned.rds")
+lasso <- read_rds("models/regression/lasso.rds")
+lasso
+```
 
+Lasso Regression also has a very bad performance on the train data and even lower than the baseline model.
+
+```{r}
 plot(lasso)
 ```
+
+However, looking at the model's performance for each fraction iteration, it seems that we can better tune the model to improve its performance. The current best performance is at fraction equal to 0.10. We could further tune the data setting fraction after this range to identify the lowest RMSE that the model could produce.
+
+```{r}
+#lasso_grid <- expand.grid(fraction = seq(0.1, 1, length = 100))
+# 
+#lasso_tuned <- train(modelL, data = regTrain,
+#                method = "lasso",
+#                tuneGrid = lasso_grid,
+#                preProcess = "nzv",
+#                trControl = ctrl)
+#saveRDS(lasso_tuned, "models/regression/lasso_tuned.rds")
+
+lasso_tuned <- read_rds("models/regression/lasso_tuned.rds")
+lasso_tuned
+```
+
+```{r}
+plot(lasso_tuned)
+```
+
+It seems that after tunning with fraction from 0.1 to 1. The best models for Lasso Regression is with fraction equal to 0.927. However, the performance of the model is still not much better than the previous models.
 
 ```{r}
 test_results$lasso <- predict(lasso, regTest)
 postResample(pred = test_results$lasso,  obs = test_results$test)
 ```
+
+On test data, the model also does not perform well. Its performance is worse than the baseline model and we perhaps should not consider Lasso as a predictive model for our case.
 
 ### Elastic Net
 
