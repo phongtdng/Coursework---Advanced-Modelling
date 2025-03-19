@@ -400,6 +400,10 @@ gbm
 
 # Regression
 
+The other objective that we had was to predict the nightly rate (in USD) for these reservations. With the predictions, we can see whether the rates of the bookings were under or over valued, helping the hotels to better set price and capture more revenue.
+
+We will first run a multi-regression model to select some important features that contribute the most to explaining the variance in the nightly rates. After that, we will create 2 model formulas, one with lower complexity (less variables used for predictions) and the other with higher complexity (more variables). We will then train various statistical and machine learning models to finally compare and identify the best performing models.
+
 ```{r}
 # inverse log
 # unscaled <- classTrain$nightly_rate_usd * 0.109 + 0.448
@@ -423,10 +427,14 @@ regTest <- df[-trainIndex,]
 test_results <- data.frame(test = regTest$nightly_rate_usd)
 ```
 
+The data splitting is done similarly to classification. However, we take out the *total_cost_usd* column as the nightly rate can be derived from dividing the total cost by the nights the guest spends at the hotel. This would artificially inflate the accuracy of the models.
+
 ```{r}
 # 5-fold repeated 5 times train control
 ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
 ```
+
+To enhance reliability and accuracy of the models, for each of them we will perform 5-fold cross validation with 5 repeats. Since our training data have around 5000 observations, this selection is appropriate. For data sets with higher amount of data points, it would be better to consider more folds in each iteration.
 
 ## Model Selection
 
@@ -442,27 +450,53 @@ ggplot(corr, aes(x = rowname, y = corr)) +
         axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
+For numeric variables, we can see that most have low correlation to our target variables. This would mean that we might have to include many variables in order to improve the prediction power. It also means that we need to consider adding various categorical variables. First, we will run a regression models including only some correlated numeric variables so examine the accuracy and noise of the model.
+
 ```{r}
 linFit <- lm(nightly_rate_usd ~ hotel_stars + agency_cancellation + leadtime + hotel_cancellation + client_cancellation + rate_offers + weekend_booking + amenities, data = regTrain)
 
 summary(linFit)
 ```
 
-R^2^ is very low, around 10%. We will add some categorical variables.
-
-```{r}
-linFit <- lm(nightly_rate_usd ~ ., data = regTrain)
-
-summary(linFit)
-```
+R^2^ is very low, around 10%. We will need to add more variables, including categorical variables to improve the model. For some of our categorical features, there are lot of levels, which will make the training model more computationally intensive. We, therefore, will first identify some variables that have more contribution to improving R^2^ to add them to the final model.
 
 ```{r}
 ols_step_forward_p(linFit)
 ```
 
+```{r}
+linFit <- lm(nightly_rate_usd ~ ., data = regTrain)
+
+coef <- summary(linFit)$coefficients
+coef[coef[,4] < 0.05,]
+```
+
+Categorical variables that are significant: *hotel_country, start_commission_info, start_cancel_policy, start_rate_type, gic_sector, free_breakfast, concierge, check_in_month, bed_type, bed_number*.
+
+```{r}
+linFit <- lm(nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + hotel_country + start_commission_info + start_cancel_policy + start_rate_type, data = regTrain)
+
+summary(linFit)
+
+ols_step_forward_p(linFit)
+```
+
+```{r}
+plot(ols_step_forward_p(linFit))
+```
+
+Around 9-10 variables
+
+```{r}
+# Simple model 
+modelS <- nightly_rate_usd ~ free_breakfast + hotel_stars + hotel_longitude + hotel_latitude + start_commission_info + leadtime + hotel_cancellation + hotel_country + start_cancel_policy + start_rate_type
+# Complex model with all significant numeric and categorical features
+modelL <- nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + hotel_country + start_commission_info + start_cancel_policy + start_rate_type + gic_sector + checkin_month
+```
+
 ## Statistical Learning
 
-### Baseline 
+### Baseline
 
 ```{r}
 # Baseline model
@@ -477,7 +511,7 @@ sqrt(mean((basePred - regTest$nightly_rate_usd)^2))
 ### Linear Regression
 
 ```{r}
-lm <- train(nightly_rate_usd ~. , data = regTrain,
+lm <- train(modelS , data = regTrain,
             method = "lm",
             trControl = ctrl) 
 saveRDS(lm, "models/regression/lm.rds")
@@ -498,29 +532,259 @@ ggplot(test_results, aes(x = lm, y = test)) +
   theme_bw()
 ```
 
-### Multiple Regression
-
 ### Forward Regression
+
+```{r}
+fReg <- train(modelL, data = regTrain,
+              method = "leapForward",
+              tuneGrid = expand.grid(nvmax = 10:30),
+              trControl = ctrl)
+fReg
+
+# Tunning
+fReg <- train(modelL, data = regTrain,
+              method = "leapForward",
+              tuneGrid = expand.grid(nvmax = 50:100),
+              trControl = ctrl)
+saveRDS(fReg, "models/regression/fReg_tuned.rds")
+fReg
+```
+
+```{r}
+plot(fReg)
+```
+
+```{r}
+# Predict
+test_results$fReg <- predict(fReg, regTest)
+postResample(pred = test_results$fReg, obs = test_results$test)
+```
 
 ### Backward Regression
 
+```{r}
+bReg <- train(modelL, data = regTrain,
+              method = "leapBackward",
+              tuneGrid = expand.grid(nvmax = 10:30),
+              trControl = ctrl)
+bReg
+# Tuning
+bReg <- train(modelL, data = regTrain,
+              method = "leapBackward",
+              tuneGrid = expand.grid(nvmax = 80:100),
+              trControl = ctrl)
+saveRDS(bReg, "models/regression/bReg_tuned.rds")
+bReg
+```
+
+```{r}
+plot(bReg)
+```
+
+```{r}
+# Predict
+test_results$bReg <- predict(bReg, regTest)
+postResample(pred = test_results$bReg,  obs = test_results$test)
+```
+
 ### Stepwise Regression
+
+```{r}
+sReg <- train(modelL, data = regTrain,
+              method = "leapSeq",
+              tuneGrid = expand.grid(nvmax = 80:100),
+              trControl = ctrl)
+saveRDS(sReg, "models/regression/sReg_tuned.rds")
+sReg
+```
+
+```{r}
+plot(sReg)
+```
+
+```{r}
+# Predict
+test_results$sReg <- predict(sReg, regTest)
+postResample(pred = test_results$sReg,  obs = test_results$test)
+```
 
 ### Ridge Regression
 
+```{r}
+ridge_grid <- expand.grid(lambda = seq(0, 0.1, length = 100))
+
+ridge <- train(modelL, data = regTrain,
+               method = "ridge",
+               tuneGrid = ridge_grid,
+               preProcess = "nzv",
+               trControl = ctrl)
+saveRDS(ridge, "models/regression/ridge_tuned.rds")
+plot(ridge)
+```
+
+```{r}
+test_results$ridge <- predict(ridge, regTest)
+postResample(pred = test_results$ridge,  obs = test_results$test)
+```
+
 ### Lasso
 
+```{r}
+lasso_grid <- expand.grid(fraction = seq(0, 0.1, length = 100))
+
+lasso <- train(modelL, data = regTrain,
+               method = "lasso",
+               tuneGrid = lasso_grid,
+               preProcess = "nzv",
+               trControl = ctrl)
+saveRDS(lasso, "models/regression/lasso_tuned.rds")
+
+plot(lasso)
+```
+
+```{r}
+test_results$lasso <- predict(lasso, regTest)
+postResample(pred = test_results$lasso,  obs = test_results$test)
+```
+
 ### Elastic Net
+
+```{r}
+elastic_grid = expand.grid(alpha = seq(0, .2, 0.01), lambda = seq(0, .1, 0.01))
+
+eNet <- train(modelL, data = regTrain,
+              method='glmnet',
+              tuneGrid = elastic_grid,
+              trControl=ctrl)
+saveRDS(eNet, "models/regression/eNet_tuned.rds")
+
+plot(eNet)
+```
+
+```{r}
+test_results$eNet <- predict(eNet, regTest)
+postResample(pred = test_results$eNet,  obs = test_results$test)
+```
 
 ## Machine Learning
 
 ### kNN
 
+```{r}
+knn <- train(modelL, data = regTrain,
+             method = "kknn",
+             timeGrid = data.frame(kmax=seq(1,15,2),distance=2,kernel='optimal'),
+             trControl = ctrl)
+saveRDS(knn, "models/regression/knn.RDS")
+plot(knn)
+```
+
+```{r}
+test_results$knn <- predict(knn, regTest)
+
+postResample(pred = test_results$knn,  obs = test_results$test)
+```
+
 ### Random Forest
+
+```{r}
+rfGrid <- expand.grid(
+  .mtry = seq(2,4),
+  .splitrule = "variance",
+  .min.node.size = seq(1,4)
+)
+
+rf <- train(modelL, data = regTrain,
+            method = "ranger",
+            trControl = ctrl,
+            tuneGrid = rfGrid,
+            importance = "impurity")
+saveRDS(rf, "models/regression/rf.rds")
+rf
+```
+
+```{r}
+plot(rf)
+```
+
+```{r}
+impVar <- varImp(rf)
+plot(importance)
+```
+
+```{r}
+rfGrid <- expand.grid(
+  .mtry = seq(4,8),
+  .splitrule = c("variance", "extratrees"),
+  .min.node.size = seq(1,6)
+)
+
+rf2 <- train(modelL, data = regTrain,
+            method = "ranger",
+            trControl = ctrl,
+            tuneGrid = rfGrid,
+            importance = "impurity")
+saveRDS(rf2, "models/regression/rf2.rds")
+rf2
+```
+
+```{r}
+test_results$rf <- predict(rf, regTest)
+
+postResample(pred = test_results$rf,  obs = test_results$test)
+
+```
 
 ### Gradient Boosting
 
+```{r}
+gb <- train(modelL, data = regTrain,
+            method = "xgbTree",
+            trControl = ctrl,
+            tuneLength = 5)
+saveRDS(gb, "models/regression/gb.rds")
+gb 
+```
+
+```{r}
+gbTune <- expand.grid(nrounds = c(500,1000), max_depth = c(5,6,7), eta = c(0.01, 0.1, 1),
+                                         gamma = c(1, 2, 3), colsample_bytree = c(1, 2),
+                                         min_child_weight = c(1), subsample = c(0.2,0.5,0.8))
+
+gb_tuned <- train(modelL, data = regTrain,
+            method = "xgbTree",
+            trControl = ctrl,
+            tuneGrid = gbTune)
+saveRDS(gb_tuned, "models/regression/gb_tuned.rds")
+gb_tuned
+```
+
+```{r}
+test_results$gb <- predict(gb, regTest)
+
+postResample(pred = test_results$gb,  obs = test_results$test)
+```
+
 ### Neural Networks
+
+```{r}
+nn <- train(nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + checkin_month, # Removed some features with many levels
+            data = regTrain,
+            method = "neuralnet",
+            trControl = ctrl,
+            preProcess = c("nzv"),
+            tuneGrid = expand.grid(layer1 = c(4, 2),
+                                   layer2 = c(2, 1, 0),
+                                   layer3 = c(0))
+)
+saveRDS(nn, "models/regression/nn.rds")
+```
+
+```{r}
+test_results$nn <- predict(nn, regTest)
+
+postResample(pred = test_results$nn,  obs = test_results$test)
+```
 
 ### Ensemble
 
