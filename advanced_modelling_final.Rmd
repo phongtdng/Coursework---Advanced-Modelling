@@ -400,6 +400,10 @@ gbm
 
 # Regression
 
+The other objective that we had was to predict the nightly rate (in USD) for these reservations. With the predictions, we can see whether the rates of the bookings were under or over valued, helping the hotels to better set price and capture more revenue.
+
+We will first run a multi-regression model to select some important features that contribute the most to explaining the variance in the nightly rates. After that, we will create 2 model formulas, one with lower complexity (less variables used for predictions) and the other with higher complexity (more variables). We will then train various statistical and machine learning models to finally compare and identify the best performing models.
+
 ```{r}
 # inverse log
 # unscaled <- classTrain$nightly_rate_usd * 0.109 + 0.448
@@ -423,10 +427,14 @@ regTest <- df[-trainIndex,]
 test_results <- data.frame(test = regTest$nightly_rate_usd)
 ```
 
+The data splitting is done similarly to classification. However, we take out the *total_cost_usd* column as the nightly rate can be derived from dividing the total cost by the nights the guest spends at the hotel. This would artificially inflate the accuracy of the models.
+
 ```{r}
 # 5-fold repeated 5 times train control
 ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
 ```
+
+To enhance reliability and accuracy of the models, for each of them we will perform 5-fold cross validation with 5 repeats. Since our training data have around 5000 observations, this selection is appropriate. For data sets with higher amount of data points, it would be better to consider more folds in each iteration.
 
 ## Model Selection
 
@@ -442,13 +450,15 @@ ggplot(corr, aes(x = rowname, y = corr)) +
         axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
+For numeric variables, we can see that most have low correlation to our target variables. This would mean that we might have to include many variables in order to improve the prediction power. It also means that we need to consider adding various categorical variables. First, we will run a regression models including only some correlated numeric variables so examine the accuracy and noise of the model.
+
 ```{r}
 linFit <- lm(nightly_rate_usd ~ hotel_stars + agency_cancellation + leadtime + hotel_cancellation + client_cancellation + rate_offers + weekend_booking + amenities, data = regTrain)
 
 summary(linFit)
 ```
 
-R^2^ is very low, around 10%. We will add some categorical variables.
+R^2^ is very low, around 10%. We will need to add more variables, including categorical variables to improve the model. For some of our categorical features, there are lot of levels, which will make the training model more computationally intensive. We, therefore, will first identify some variables that have more contribution to improving R^2^ to add them to the final model.
 
 ```{r}
 ols_step_forward_p(linFit)
@@ -746,7 +756,7 @@ gb_tuned <- train(modelL, data = regTrain,
             trControl = ctrl,
             tuneGrid = gbTune)
 saveRDS(gb_tuned, "models/regression/gb_tuned.rds")
-gb 
+gb_tuned
 ```
 
 ```{r}
