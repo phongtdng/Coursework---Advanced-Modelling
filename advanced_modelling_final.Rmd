@@ -753,19 +753,31 @@ On test data, however, the model performs slightly better. Compared to all previ
 ### kNN
 
 ```{r}
-knn <- train(modelL, data = regTrain,
-             method = "kknn",
-             timeGrid = data.frame(kmax=seq(1,15,2),distance=2,kernel='optimal'),
-             trControl = ctrl)
-saveRDS(knn, "models/regression/knn.RDS")
+# knn <- train(modelL, data = regTrain,
+#              method = "kknn",
+#              timeGrid = data.frame(kmax=seq(1,15,2),distance=2,kernel='optimal'),
+#              trControl = ctrl)
+# saveRDS(knn, "models/regression/knn.RDS")
+
+knn <- read_rds("models/regression/knn.RDS")
+knn
+```
+
+With the Machine Learning model k-Nearest Neighbors, the model performs best where kmax = 9, distance = 2, and kernal = 2 based on our hyperparameter setting. We could further tune this model with different hyperparameter settings. However, kNN model is known to perform better on a different set of problems where physical network plays an important role in predicting the dependent variable, which is not our case.
+
+```{r}
 plot(knn)
 ```
+
+By plotting the model performance against max number of neighbors selected, we can see that the model is likely to be able to improve with higher set of max neighbors and perhaps other hyperparameters.
 
 ```{r}
 test_results$knn <- predict(knn, regTest)
 
 postResample(pred = test_results$knn,  obs = test_results$test)
 ```
+
+On test data, kNN model does not perform better than the majority of regression models. The model performs better than the baseline but it is a lot more computationally intensive than some regression model with a simpler formula.
 
 ### Random Forest
 
