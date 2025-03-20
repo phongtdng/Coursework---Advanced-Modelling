@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
 ```
 
 ```{r}
@@ -25,13 +25,21 @@ library(olsrr)
 library(ggpubr)
 ```
 
+# Introduction
+
+Predicting the nightly booking rate, also known as the Average Daily Rate (ADR), and forecasting reservation cancellations are longstanding challenges in the hospitality industry. While extensive research has been conducted on these topics, much of it focuses on widely used datasets, such as the Hotel Booking Demand Dataset [(Antonio, Almeida, & Nunes, 2019)](https://www.sciencedirect.com/science/article/pii/S2352340918315191), which provides a comprehensive overview of hotel booking patterns in leisure travel. However, there has been limited exploration of bookings that originate exclusively from business bookings.
+
+Business and leisure travel exhibit distinct characteristics that influence booking behavior, pricing sensitivity, and cancellation patterns. Business trips are typically arranged by employers and prioritize convenience factors such as location, WiFi availability, and meal services, ensuring convenient experiences for travelers [(Navan, 2023)](https://navan.com/blog/traveler-experience/what-is-the-difference-between-leisure-and-business-travel). Additionally, business travelers tend to be more loyal to specific hotel providers and often book accommodations during weekdays to align with work commitments. In contrast, leisure travelers are more price-sensitive and frequently book stays around holidays and peak vacation periods.
+
+Given these fundamental differences, the predictive models used for ADR and cancellation forecasting may need to be tailored separately for business and leisure travel. This project aims to address this gap by focusing specifically on business hotel bookings. We will begin by conducting exploratory data analysis (EDA) to understand key patterns, followed by data cleaning and transformation to ensure model readiness. Finally, we will implement and compare various supervised learning models to predict nightly rate and reservation cancellations, assessing their effectiveness in extracting actionable insights from business travel booking data.
+
 # Data
 
 ```{r}
 booking_data <- read.csv("data/NDAQ-CHB.csv")
 ```
 
-Link to dataset: <https://data.nasdaq.com/databases/CHB>
+This data set is a sample data set obtained from Nasdaq Data Link. The dataset contains hotel bookings processed through global corporate travel and expense agencies. More information about the dataset can be obtained from Nasdaq Data Link ([Nasdaq, n.d.](https://data.nasdaq.com/databases/CHB#anchor-coverage)).
 
 ## EDA
 
@@ -1219,3 +1227,15 @@ ggplot(pred, aes(x = fit, y = real)) +
 ```
 
 Using our best model (Gradient Boosting Machine), we could estimate the lost opportunities for bookings that were under the expected rate. To do this, we first compute a 90% confince interval by using 10% of the error data points assigned at random as noise. We then identify bookings that had a lower nightly rate than the lower bound of the interval. These rates are then added together to produce the lost nightly rate for our test data set. For our testing data set, there is an overall lost nightly rate opportunity of \$1967! Even though this is an estimate for all bookings from various hotels, we could calculate the lost rate for each hotel as well by merging with the original booking identification data.
+
+# Conclusion
+
+# Citations
+
+Antonio, N., Almeida, A. d., & Nunes, L. (2019). Hotel booking demand datasets. *Data in Brief, 22*, 41–49. <https://doi.org/10.1016/j.dib.2018.11.126>
+
+Navan. (2023). *What is the difference between leisure and business travel?*\
+<https://navan.com/blog/traveler-experience/what-is-the-difference-between-leisure-and-business-travel>
+
+Nasdaq. (n.d.). *China Hotel Booking (CHB) database*. Nasdaq Data Link.\
+<https://data.nasdaq.com/databases/CHB#anchor-coverage>
