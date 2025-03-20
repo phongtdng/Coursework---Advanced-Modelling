@@ -354,7 +354,7 @@ On test data set, the model performs a little better and improved the accuracy b
 
 ```{r}
 test_results$logit <- predict(logit, classTest, type = "prob") %>% pull(No)
-test_results$logit <- ifelse(test_results$logit > 0.7, "No", "Yes") %>% factor(c("Yes", "No"), levels = c("Yes", "No"))
+test_results$logit <- ifelse(test_results$logit > 0.7, "No", "Yes") %>% factor(c("No", "Yes"), levels = c("No", "Yes"))
 confusionMatrix(test_results$logit, test_results$test)
 ```
 
@@ -427,7 +427,7 @@ On test data set, the model performs not much better than Logistic Regression mo
 
 ```{r}
 test_results$trees <- predict(trees, classTest, type = "prob") %>% pull(No)
-test_results$trees <- ifelse(test_results$trees > 0.8, "No", "Yes") %>% factor(c("Yes", "No"), levels = c("Yes", "No"))
+test_results$trees <- ifelse(test_results$trees > 0.8, "No", "Yes") %>% factor(c("No", "Yes"), levels = c("No", "Yes"))
 confusionMatrix(test_results$trees, test_results$test)
 ```
 
@@ -465,7 +465,7 @@ Similarly to performance on train data set, our Random Forest model has an accur
 
 ```{r}
 test_results$rf <- predict(rf, classTest, type = "prob") %>% pull(No)
-test_results$rf <- ifelse(test_results$rf > 0.6, "No", "Yes") %>% factor(c("Yes", "No"), levels = c("Yes", "No"))
+test_results$rf <- ifelse(test_results$rf > 0.6, "No", "Yes") %>% factor(c("No", "Yes"), levels = c("No", "Yes"))
 confusionMatrix(test_results$rf, test_results$test)
 ```
 
@@ -474,33 +474,67 @@ We get a healthy trade-off between specificity and sensitivity at threshold arou
 ### Gradient Boosting
 
 ```{r}
-gbm <- train(cancelled ~. , data = classTrain,
-            method = "xgbTree",
-            trControl = ctrl,
-            tuneLength = 5)
-saveRDS(gbm, "models/classification/xgb.rds")
+# Model training
+# gbm <- train(cancelled ~. , data = classTrain,
+#             method = "xgbTree",
+#             trControl = ctrl,
+#             tuneLength = 5)
+# saveRDS(gbm, "models/classification/xgb.rds")
+
+# Model results
+gbm <- read_rds("models/classification/xgb.rds")
 gbm
+
+gbm$results %>% slice_max(Accuracy)
 ```
+
+With Gradient Boosting Machine, we obtain a model with accuracy on par with Random Forest. We could further tune the model with different hyperparameter to improve the model.
 
 ```{r}
 plot(gbm)
 ```
 
+Upon checking the model's accuracy at various hyperparameter settings, it seems that the model performs better around 50 iterations (nrounds), max_depth around 2, eta around 0.3, gamma at 0, colsample_bytree below 1, and min_child_weight and subsample at 1. We will retrain the model with these parameter ranges to see whether the model improves.
+
 ```{r}
-gbTune <- expand.grid(nrounds = seq(30,60,10), 
-                      max_depth = c(1,2,3), 
-                      eta = c(0.1, 0.2, 3),
-                      gamma = c(0), 
-                      colsample_bytree = c(0.5, 0.6,0.8),
-                      min_child_weight = c(1), 
-                      subsample = c(1))
-gbm_tuned <- train(cancelled ~. , data = classTrain,
-            method = "xgbTree",
-            trControl = ctrl,
-            tuneGrid = gbTune)
-saveRDS(gbm_tuned, "models/classification/xgb_tuned.rds")
+# #Tuning settings
+# gbTune <- expand.grid(nrounds = seq(30,60,10), 
+#                       max_depth = c(1,2,3), 
+#                       eta = c(0.1, 0.2, 0.3),
+#                       gamma = c(0), 
+#                       colsample_bytree = c(0.5, 0.6,0.8),
+#                       min_child_weight = c(1), 
+#                       subsample = c(1))
+# # Model train
+# gbm_tuned <- train(cancelled ~. , data = classTrain,
+#             method = "xgbTree",
+#             trControl = ctrl,
+#             tuneGrid = gbTune)
+# saveRDS(gbm_tuned, "models/classification/xgb_tuned.rds")
+
+# Model results
+gbm_tuned <- read_rds("models/classification/xgb_tuned.rds")
 gbm_tuned
+
+gbm_tuned$results %>% slice_max(Accuracy)
 ```
+
+After tuning, we improved the model accuracy very slightly to 0.931. We will evaluate the performance of the model on test data.
+
+```{r}
+test_results$gbm <- predict(gbm, classTest)
+confusionMatrix(test_results$gbm, test_results$test)
+```
+
+The results of Gradient Boosting Machine model is not much better than Random Forest model in terms of Accuracy. However, we get a better specificity rate and sensitivity is still quite high.
+
+```{r}
+test_results$gbm <- predict(gbm, classTest, type = "prob") %>% pull(No)
+test_results$gbm <- ifelse(test_results$gbm > 0.8, "No", "Yes") %>% factor(c( "No", "Yes"), levels = c( "No", "Yes"))
+confusionMatrix(test_results$gbm, test_results$test)
+```
+
+At threshold around 0.61, we obtain a model with 92% accuracy and improved the specificity by 5% (to 44%) and only traded off around 1.5% of sensitivity. If we aim to improve specificity, we can set the threshold around 0.8, which will improve specificity up to 67% but at the same sensitivity would drop to around 93%.
 
 ### Neural Networks
 
