@@ -1230,6 +1230,12 @@ Using our best model (Gradient Boosting Machine), we could estimate the lost opp
 
 # Conclusion
 
+Predicting nightly rates and booking cancellations using our dataset proved to be a challenging task. Despite this, we successfully improved predictive performance over the baseline using various statistical and machine learning models. While the improvements were modest, they had substantial financial implications for hotel providers. As demonstrated, implementing the Gradient Boosting Machine (GBM) model could potentially mitigate \$6,500 in losses per night due to cancellations and increase revenue by up to \$1,900 per night through optimized pricing strategies.
+
+Among all models tested, GBM emerged as the best-performing model for both regression and classification tasks. However, the model is computationally expensive compared to simpler models. Further hyperparameter tuning could be conducted to enhance predictive accuracy while balancing computational efficiency.
+
+Future research could explore additional models, such as Support Vector Machines (SVM) for cancellation prediction, or alternative implementations of existing models, such as the "ranger" package for an optimized Random Forest approach. These refinements could further improve predictive accuracy and provide deeper insights, supporting more effective decision-making in hotel revenue management.
+
 # Citations
 
 Antonio, N., Almeida, A. d., & Nunes, L. (2019). Hotel booking demand datasets. *Data in Brief, 22*, 41–49. <https://doi.org/10.1016/j.dib.2018.11.126>
