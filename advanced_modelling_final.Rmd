@@ -2,14 +2,21 @@
 title: "Advanced Modelling - Final Project"
 author: "Phong"
 date: "2025-03-11"
-output: html_document
+output: 
+  html_document:
+    theme: flatly
+    toc: yes
+    toc_float:
+      collapsed: true
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
 ```
 
-```{r}
+# Library
+
+```{r message = FALSE}
 library(tidyverse)
 library(ggplot2)
 library(GGally)
@@ -22,7 +29,18 @@ library(conflicted)
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
 library(olsrr)
+library(ggpubr)
 ```
+
+# Introduction
+
+Predicting the **nightly booking rate**, also known as the Average Daily Rate (ADR), and forecasting reservation **cancellations** are longstanding challenges in the hospitality industry. While extensive research has been conducted on these topics, much of it focuses on widely used datasets, such as the Hotel Booking Demand Dataset [(Antonio, Almeida, & Nunes, 2019)](https://www.sciencedirect.com/science/article/pii/S2352340918315191), which provides a comprehensive overview of hotel booking patterns in leisure travel. However, there has been **limited exploration of bookings that originate exclusively from business bookings**.
+
+**Business and leisure travel exhibit distinct characteristics** that influence booking behavior, pricing sensitivity, and cancellation patterns. Business trips are typically arranged by employers and prioritize convenience factors such as location, WiFi availability, and meal services, ensuring convenient experiences for travelers [(Navan, 2023)](https://navan.com/blog/traveler-experience/what-is-the-difference-between-leisure-and-business-travel). Additionally, business travelers tend to be more loyal to specific hotel providers and often book accommodations during weekdays to align with work commitments. In contrast, leisure travelers are more price-sensitive and frequently book stays around holidays and peak vacation periods.
+
+Given these fundamental differences, the predictive models used for ADR and cancellation forecasting may need to be tailored separately for business and leisure travel. **This project aims to address this gap by focusing specifically on business hotel bookings**. We will begin by conducting exploratory data analysis (**EDA**) to understand key patterns, followed by **data cleaning** and **transformation** to ensure model readiness. Finally, we will implement and compare various **supervised learning models** to predict nightly rate and reservation cancellations, assessing their effectiveness in extracting actionable insights from business travel booking data.
+
+**NOTE: the models were trained and saved into RDS files. Code for training the model has been commented out. To reproduce the training, the code would need to be un-commented.**
 
 # Data
 
@@ -30,7 +48,7 @@ library(olsrr)
 booking_data <- read.csv("data/NDAQ-CHB.csv")
 ```
 
-Link to dataset: <https://data.nasdaq.com/databases/CHB>
+This data set is a sample data set obtained from **Nasdaq Data Link**. **The dataset contains corporate hotel bookings** processed through global corporate travel and expense agencies. More information about the dataset can be obtained from Nasdaq Data Link ([Nasdaq, n.d.](https://data.nasdaq.com/databases/CHB#anchor-coverage)).
 
 ## EDA
 
@@ -46,7 +64,7 @@ colSums(is.na(booking_data)) %>%
          "Count of NA" = 2)
 ```
 
-In the dataset, there is only 1 missing value on hotel_state column. However, this column is not relevant for our data modelling.
+In the dataset, there is only **1 missing value** on *hotel_state* column. However, this column is not relevant for our data modelling.
 
 ```{r}
 # Check for empty values
@@ -58,13 +76,13 @@ colSums(booking_data == "") %>%
          "Count of EMPTY" = 2)
 ```
 
-There are a lot of empty cells in the dataset. Some of these are valid value as they indicate a 0 value. For example, the empty rows in *cancel_date* indicate that there was not any cancellation made. Another columns of this type are *start_amenities*. For these columns, we will simply transform into dummy columns and replace with 0 for empty cells.
+There are **a lot of empty cells** in the dataset. Some of these are valid value as they indicate a 0 value. For example, the empty rows in *cancel_date* indicate that there was not any cancellation made. Another columns of this type are *start_amenities*. For these columns, **we will simply transform into dummy columns and replace with 0** for empty cells.
 
-Some of the columns have empty values because simply there is no value (e.g., *hotel_chain_name*, *hotel_chain_ticker_symbol*). For these columns, we will impute using the *hotel_brand_name* column.
+Some of the columns have empty values because simply there is no value (e.g., *hotel_chain_name*, *hotel_chain_ticker_symbol*). For these columns, **we will impute** using the *hotel_brand_name* column.
 
-For column *hotel_postal_code*, we can impute based on location (*longitude* and *latitude*). However, for the purpose of model building, we will not use this column and we will simply remove this column.
+For column *hotel_postal_code*, we can impute based on location (*longitude* and *latitude*). However, for the purpose of model building, **we will not use this column** and we will simply remove this column.
 
-The other columns (*start_commision_info*, *start_cancel_policy*, *start_room_type*, and *start_bed_type, gic_sector*) are actually missing values that can be derived from the other data points and contain relevant information for our models. We, therefore, will later impute them.
+The other columns (*start_commision_info*, *start_cancel_policy*, *start_room_type*, and *start_bed_type, gic_sector*) are actually missing values that can be derived from the other data points and contain relevant information for our models. **We, therefore, will later impute them**.
 
 ```{r}
 # Check for duplicate
@@ -72,21 +90,27 @@ booking_data %>%
   filter(duplicated(reservation_id))
 ```
 
-There is no duplicated reservation in our dataset.
+There is **no duplicated** reservation in our dataset.
 
 ```{r}
 # Outlier detection
 booking_data %>% 
   ggplot(aes(x = nightly_rate_usd)) +
-  geom_boxplot()
+  geom_boxplot() +
+  labs(title = "Various Outliers Detected in Dependent Variable") +
+  theme_classic() +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
 
-# Using z-score
+# Using z-score to detect number of outliers
 booking_data %>% 
   mutate(z_score = (nightly_rate_usd - mean(nightly_rate_usd)) / sd(nightly_rate_usd)) %>% 
-  filter(abs(z_score) > 3)
+  filter(abs(z_score) > 3) %>% 
+  nrow()
 ```
 
-There are certainly outliers in our target varaible nightly_rate_usd. We will need to acknowledge this during the modelling phase as some of the methods are sensitive to outliers (e.g., Linear Regression) while others are more robust and less affected (e.g., Random Forest). As such, we will not remove them from the dataset.
+There are certainly **outliers (135)** in our target variable *nightly_rate_usd*. We will need to acknowledge this during the modelling phase as some of the methods are sensitive to outliers (e.g., Linear Regression) while others are more robust and less affected (e.g., Random Forest). As such, **we will not remove them from the dataset**.
 
 ```{r}
 # Univariate analysis - Nightly rate (USD)
@@ -96,11 +120,11 @@ booking_data %>%
   filter(abs(z_score) < 3) %>%
   # Visualization of target variable
   ggplot(aes(x = nightly_rate_usd)) +
-  geom_histogram(binwidth = 20) +
+  geom_histogram(binwidth = 20, fill = "cadetblue3") +
   geom_vline(aes(xintercept = median(nightly_rate_usd)), color="indianred", linetype="dashed")+
   geom_text(aes(x = median(nightly_rate_usd), label = paste("Median nightly rate:", median(nightly_rate_usd), "(usd)"), y = 1050), color = "indianred", hjust= -0.1) +
   labs(x = "Nightly Rate (USD)", y = "Frequency",
-       title = "Distribution of Nightly Rate on Bookings from Businesses") +
+       title = "Nightly Rate Seems To Follow A Normal Distribution") +
   theme_classic() +
   theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5))
 ```
@@ -114,13 +138,12 @@ booking_data %>%
   stat_count(geom = "text", colour = "white", aes(label = paste0(..count..," (",round(..count../nrow(booking_data)*100,0), "%)")),position=position_stack(vjust=0.5))+
   scale_fill_discrete(name = "Status", labels = c("Not Cancelled", "Cancelled")) +
   labs(x = "Cancelled Status", y = "Frequency",
-       title = "Frequency of Cancellation of Business Hotel Bookings",
-       subtitle = "Moderate Degree of Imbalance in Target Variable") +
+       title = "Moderate Degree of Imbalance in Target Variable (Cancellation)") +
   theme_classic() +
   theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5))
 ```
 
-In our dataset, there is a moderate degree of imbalance in our dataset for the targeted variable cancellation. This might create some bias when training the models as many of them are created for balanced data. Therefore, we will consider balancing data in the sampling process to mitigate the imbalance.
+In our dataset, there is a moderate degree of imbalance in our dataset for the targeted variable cancellation. **This might create some bias when training the models as many of them are created for balanced data**. Therefore, we would need to consider balancing data in the sampling process to mitigate the imbalance.
 
 ```{r}
 # Multivariate analysis - Nightly rate (USD)
@@ -130,7 +153,7 @@ booking_data %>%
   ggpairs()
 ```
 
-Using only numeric variables offers little insights to the nightly_rate_usd variable as these features are highly dependent to the nightly rate of the booking (e.g., total cost). We will later create more variables and factorize categorical variables in order to see more variables that influence nightly rate. We expect to see positive correlation between nightly rate and variables such as room type (i.e., deluxe rooms should cost more than standard rooms) or amenities (i.e., more amenities imply more cost).
+Using only numeric variables offers little insights to the *nightly_rate_usd* variable as these features are highly dependent to the nightly rate of the booking (e.g., total cost). We will later create more variables and factorize categorical variables in order to see more variables that influence nightly rate. We expect to see positive correlation between nightly rate and variables such as room type (i.e., deluxe rooms should cost more than standard rooms) or amenities (i.e., more amenities imply more cost).
 
 ```{r}
 # Multivariate analysis - Cancellation
@@ -143,14 +166,14 @@ booking_data %>%
   ggplot(aes(x = fct_infreq(gic_sector), y = cancel_percentage, fill = start_cancel_policy)) +
   geom_col() +
   labs(x = "Client Sector", y = "Cancel Percentage",
-       title = "Cancellation Frequency by Sector and Cancellation Policy",
+       title = "Some Sectors and Policies Might Have An Effect On Cancellation",
        fill = "Cancellation Policy") +
   theme_classic() +
   theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
-        axis.text.x = element_text(angle = 45, hjust= 1))
+        axis.text.x = element_text(angle = 45, hjust= 0.5))
 ```
 
-Certain sectors seem to have a higher rate of booking cancellation than others (e.g., IT with 20% cancellation rate and Industrial with about 15% cancellation rate). We also observe that more flexible cancellation policies result in higher cancellation where as the less days are given to cancel the booking the less likely the client would cancel.
+**Certain sectors seem to have a higher rate of booking cancellation** than others (e.g., IT with 20% cancellation rate and Industrial with about 15% cancellation rate). We also observe that **more flexible cancellation policies result in higher cancellation** where as the less days are given to cancel the booking the less likely the client would cancel.
 
 ## Data Cleaning & Pre-processing
 
@@ -256,7 +279,9 @@ transformation %>%
   ggplot(aes(x = value)) +
   geom_histogram() +
   facet_wrap(~ var, scales = "free") +
-  theme_classic()
+  labs(title = "Pre-transformation Distribution and Scale") +
+  theme_classic() +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5))
 
 transformation <- transformation %>%
   # Normalise with log and feature squaring transform
@@ -272,20 +297,30 @@ transformation %>%
   ggplot(aes(x = value)) +
   geom_histogram() +
   facet_wrap(~ var, scales = "free") +
-  theme_classic()
+  labs(title = "Post-transformation Distribution and Scale") +
+  theme_classic() +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5))
+```
+
+```{r}
+# Inverse function for transformation
+inverse_transform <- function(data) {
+  unscaled <- data * 0.109 + 0.448 #scale and center attributes of nightly_rate_usd
+  unnormalised <- unscaled * (log(max(booking_data$nightly_rate_usd) +1) - log(min(booking_data$nightly_rate_usd) +1)) + log(min(booking_data$nightly_rate_usd)+1)
+  unlogged <- exp(unnormalised) -1
+  return(unlogged)
+}
 ```
 
 ### Final Dataframe
 
 ```{r}
-df_final <- cbind(
+df <- cbind(
   df %>% select_if(is.factor),
   df %>% select(hotel_latitude,hotel_longitude),
   transformation
 ) %>% 
   select(-c(start_amenities, start_bed_type))
-
-saveRDS(df_final, "df_ready_for_ML.rds")
 ```
 
 # Classification
@@ -294,8 +329,6 @@ saveRDS(df_final, "df_ready_for_ML.rds")
 
 ```{r}
 set.seed(5436)
-df <- read_rds("df_ready_for_ML.rds") %>% select(-booking_change)
-
 trainIndex <- createDataPartition(df$cancelled, p = 0.8, list = FALSE)
 
 classTrain <- df[trainIndex,]
@@ -325,48 +358,41 @@ basePred <- rep("No", nrow(classTest)) %>% factor(c("No", "Yes"),levels = c("No"
 confusionMatrix(basePred, classTest$cancelled)
 ```
 
-The baseline model has a very high accuracy of 90%. This is normal as we have a moderate degree of data imbalance in the target class. However, the accuracy is not the sole metric that we aim for. In our problem, we would want to improve the specificity of the model for some trade-off of sensitivity. If we predict for a reservation to be a no cancellation when it turns out to be a cancellation, we lose the potential to anticipate and replace with another reservation, consequentially have revenue loss. Of course, there is also a risk for trading off sensitivity. If we anticipate cancellation of a booking and it turns out not cancelled and the hotel is at capacity, we then will get an overbooking problem and will have to compensate for the guests. Overall, we will aim to improve the accuracy as much as possible and keep a healthy balance of specificity and sensitivity trade-off.
+The **baseline model has a very high accuracy of 90%**. **This is normal as we have a moderate degree of data imbalance** in the target class. However, the accuracy is not the sole metric that we aim for. In our problem, we would want to **improve the specificity** of the model for **some trade-off of sensitivity**. If we predict for a reservation to be a no cancellation when it turns out to be a cancellation, we lose the potential to anticipate and replace with another reservation, consequentially have revenue loss. Of course, there is also a risk for trading off sensitivity. If we anticipate cancellation of a booking and it turns out not cancelled and the hotel is at capacity, we then will get an overbooking problem and will have to compensate for the guests. Overall, we will aim to **improve the accuracy** as much as possible and keep a **healthy balance of specificity and sensitivity trade-off**.
 
 ### Logistic Regression
 
 ```{r warning = FALSE}
 # set.seed(3245)
 # # Model train
-logit <- train(cancelled ~., data = classTrain,
-               method = "glm",
-               trControl = ctrl,
-               family = "binomial")
-saveRDS(logit, "models/classification/logit.rds")
+# logit <- train(cancelled ~., data = classTrain,
+#                method = "glm",
+#                trControl = ctrl,
+#                family = "binomial")
+# saveRDS(logit, "models/classification/logit.rds")
 
 # Model results
 logit <- read_rds("models/classification/logit.rds")
 logit
 ```
 
-With Logistic Regression model, we improved the accuracy by 6% compared to the baseline model. Considering that it is not a very computationally intensive training, this could be a great model for our problem. We will check the model's performance on test data and see whether the model actually gives better results than the baseline model.
+With Logistic Regression model, it seems that we did not improve the accuracy. We will check the model's performance on test data and see whether the model actually gives better results than the baseline model.
 
 ```{r}
 test_results$logit <- predict(logit, classTest)
 confusionMatrix(test_results$logit, test_results$test)
 ```
 
-The Logistic Regression performs very well on the test data set, with 98% of accuracy and increased specificity to 86% while sensitivity trade-off is only around 0.4%. We can modify the threshold to improve this.
+On test data set, the model performs a little better and **improved the accuracy by 2%** compared to the baseline model. The model also **increased specificity to 39%** while **sensitivity trade-off is only around 3%**. We can modify the threshold to improve this.
 
 ```{r}
-test_results$logit <- predict(logit, classTest, type = "prob") %>% pull(Yes)
-test_results$logit <- ifelse(test_results$logit > 0.4, "Yes", "No") %>% factor(c("Yes", "No"), levels = c("Yes", "No"))
+# Adjusting threshold to improve cancellation prediction
+test_results$logit <- predict(logit, classTest, type = "prob") %>% pull(No)
+test_results$logit <- ifelse(test_results$logit > 0.7, "No", "Yes") %>% factor(c("No", "Yes"), levels = c("No", "Yes"))
 confusionMatrix(test_results$logit, test_results$test)
 ```
 
-It seems that at threshold of 0.4 to be classified as positive cancellation prediction, we get the best model with accuracy of 0.98 and increasing specificity slightly by 1% while maintaining sensitivity.
-
-### Bayes Classifiers
-
-```{r}
-# Model train
-lda <- lda(classTrain[,-14], grouping = classTrain[,14])
-lda
-```
+It seems that at **threshold between 0.6 and 0.7,** we get the best model with **accuracy of 91%** and **increase the specificity by 11%** while sensitivity only decreased by 2%.
 
 ## Machine Learning Classification
 
@@ -374,118 +400,258 @@ lda
 
 ```{r}
 # Model train
-knn <- train(cancelled ~., data = classTrain,
-             method = "knn",
-             trControl = ctrl,
-             tuneGrid = expand.grid(k = seq(1, 25, by = 2)))
-saveRDS(knn, "models/classification/knn.rds")
+# knn <- train(cancelled ~., data = classTrain,
+#              method = "knn",
+#              trControl = ctrl,
+#              tuneGrid = expand.grid(k = seq(1, 25, by = 2)))
+# saveRDS(knn, "models/classification/knn.rds")
 
 # Model results
 knn <- read_rds("models/classification/knn.rds")
 knn
 ```
 
-With k-Nearest Neighbors, we get the best performing model at k = 7. However, the model does not perform any better than the baseline model. Since the kNN is more well suited for problems involving physical network, it is understandable the model did not perform well for our data set. We will evaluate again the model's performance on test data.
+With k-Nearest Neighbors, we get the **best performing model at k = 11.** However, the **model does not perform any better than the baseline model.** Since the kNN is more well suited for problems involving physical network, it is understandable the model did not perform well for our data set. We will evaluate again the model's performance on test data.
 
 ```{r}
+# kNN model performance on test data
 test_results$knn <- predict(knn, classTest)
 confusionMatrix(test_results$knn, test_results$test)
 ```
 
-Similarly to the performance on train data, the model did not improve much the accuracy of predictions compared to the baseline model. Specificity improved slightly and there is little trade-off on sensitivity but overall it is still not a good model in practice.
+Similarly to the performance on train data, the **model did not improve much the accuracy** of predictions compared to the baseline model. **Specificity improved slightly (by 8%)** and there is little **trade-off on sensitivity (less than 1%)** but overall it is still **not a good model in practice.**
 
 ### Decision Trees
 
 ```{r}
 # Model train
-trees <- train(cancelled ~., data = classTrain,
-               method = "rpart",
-               trControl = ctrl,
-               control = rpart.control(minsplit = 20, maxdepth = 10, cp=0.01),
-               tuneLength = 10)
-saveRDS(trees, "models/classification/trees.rds")
+# trees <- train(cancelled ~., data = classTrain,
+#                method = "rpart",
+#                trControl = ctrl,
+#                control = rpart.control(minsplit = 20, maxdepth = 10, cp=0.01),
+#                tuneLength = 10)
+# saveRDS(trees, "models/classification/trees.rds")
 
-# Model result
+# Model results
 trees <- read_rds("models/classification/trees.rds")
 trees
 ```
+
+Decision Trees model seems to have **better performance than Logistic Regression model**, at least on train data set. The **best performing model was set at cp = 0.0128**. We have test a wide range below and beyond this parameter, therefore, we would not need further tuning for the model.
 
 ```{r}
 plot(trees)
 ```
 
+We can see better with the graph that the **best performing models are between 0.01 and 0.02**. We could potentially tune with smaller fractions for complexity but it will not improve the better by a significant amount.
+
+```{r}
+# Decision Trees model performance on test data
+test_results$trees <- predict(trees, classTest)
+confusionMatrix(test_results$trees, test_results$test)
+```
+
+On test data set, the model performs not much better than Logistic Regression model. We will redefine the threshold to maximize the performance.
+
+```{r}
+# Adjusting threshold to improve cancellation prediction
+test_results$trees <- predict(trees, classTest, type = "prob") %>% pull(No)
+test_results$trees <- ifelse(test_results$trees > 0.8, "No", "Yes") %>% factor(c("No", "Yes"), levels = c("No", "Yes"))
+confusionMatrix(test_results$trees, test_results$test)
+```
+
+We can set a high **threshold around 0.8** to increase the **specificity to 60%**. With this threshold, we do get a less accuracy rate and trade off around 5% of sensitivity. In practice, we would need to calculate the potential opportunity loss and gain in revenue and the current capacity of the hotel in order to justify the decision.
+
 ### Random Forests
 
 ```{r}
-rf <- train(cancelled ~. , data = classTrain,
-            method = "rf",
-            trControl = ctrl,
-            tuneLength = 10)
-saveRDS(rf, "models/classification/rf.rds")
+# Model training
+# rf <- train(cancelled ~. , data = classTrain,
+#             method = "rf",
+#             trControl = ctrl,
+#             tuneLength = 10)
+# saveRDS(rf, "models/classification/rf.rds")
+
+# Model results
+rf <- read_rds("models/classification/rf.rds")
 rf
 ```
+
+With Random Forest, our **best performing model has an accuracy of 93% at mtry = 25.** This is a **3% of improvement** compared to the baseline model.
+
+```{r}
+plot(rf)
+```
+
+By plotting the accuracy against the maximum number of randomly selected predictors (mtry), we can see that we obtain the best model around mtry = 25. There will be no need for further tuning. To improve the model, we would need to try to train with a different method than "rf" with more hyperparameters.
+
+```{r}
+# Compare Random Forest model performance on test data set
+test_results$rf <- predict(rf, classTest)
+confusionMatrix(test_results$rf, test_results$test)
+```
+
+Similarly to performance on train data set, our **Random Forest model has an accuracy around 93%** on test data set, with **better specificity** than the previous models (around **34%**) while **sensitivity maintains high (around 99%)**.
+
+```{r}
+# Adjust threshold to increase cancellation prediction while keep sensitivity high
+test_results$rf <- predict(rf, classTest, type = "prob") %>% pull(No)
+test_results$rf <- ifelse(test_results$rf > 0.6, "No", "Yes") %>% factor(c("No", "Yes"), levels = c("No", "Yes"))
+confusionMatrix(test_results$rf, test_results$test)
+```
+
+We get a healthy trade-off between specificity and sensitivity at **threshold around 0.6.** At this threshold, **accuracy stays high (close to 94%)** while we only traded off **1% off sensitivity for 17% of specificity**. If our goal was to improve specificity as much as possible, a threshold around 0.7 to 0.8 would be the best without risking too many overbookings.
 
 ### Gradient Boosting
 
 ```{r}
-gbm <- train(cancelled ~. , data = classTrain,
-            method = "xgbTree",
-            trControl = ctrl,
-            tuneLength = 5)
-saveRDS(gbm, "models/classification/xgb.rds")
-gbm
+# Model training
+# gbm <- train(cancelled ~. , data = classTrain,
+#             method = "xgbTree",
+#             trControl = ctrl,
+#             tuneLength = 5)
+# saveRDS(gbm, "models/classification/xgb.rds")
+
+# Model results
+gbm <- read_rds("models/classification/xgb.rds")
+
+gbm$results %>% slice_max(Accuracy)
 ```
+
+With Gradient Boosting Machine, we obtain a model with **accuracy on par with Random Forest**. We could further tune the model with different hyperparameter to improve the model.
 
 ```{r}
 plot(gbm)
 ```
 
-```{r}
-gbTune <- expand.grid(nrounds = seq(30,60,10), 
-                      max_depth = c(1,2,3), 
-                      eta = c(0.1, 0.2, 3),
-                      gamma = c(0), 
-                      colsample_bytree = c(0.5, 0.6,0.8),
-                      min_child_weight = c(1), 
-                      subsample = c(1))
-gbm_tuned <- train(cancelled ~. , data = classTrain,
-            method = "xgbTree",
-            trControl = ctrl,
-            tuneGrid = gbTune)
-saveRDS(gbm_tuned, "models/classification/xgb_tuned.rds")
-gbm_tuned
-```
-
-### Support Vector Machines
-
-### Neural Networks
+Upon checking the model's accuracy at various hyperparameter settings, it seems that the model performs better around **50 iterations (nrounds), max_depth around 2, eta around 0.3, gamma at 0, colsample_bytree below 1, and min_child_weight and subsample at 1**. We will retrain the model with these parameter ranges to see whether the model improves.
 
 ```{r}
-# nn <- train(cancelled ~. , data = classTrain,
-#             method = "nnet",
+# #Tuning settings
+# gbTune <- expand.grid(nrounds = seq(30,60,10), 
+#                       max_depth = c(1,2,3), 
+#                       eta = c(0.1, 0.2, 0.3),
+#                       gamma = c(0), 
+#                       colsample_bytree = c(0.5, 0.6,0.8),
+#                       min_child_weight = c(1), 
+#                       subsample = c(1))
+# # Model train
+# gbm_tuned <- train(cancelled ~. , data = classTrain,
+#             method = "xgbTree",
 #             trControl = ctrl,
-#             tuneGrid = expand.grid(size = c(5),
-#                                    decay = c(0.1)))
-# saveRDS(nn, "models/classification/nn.rds")
-# nn
+#             tuneGrid = gbTune)
+# saveRDS(gbm_tuned, "models/classification/xgb_tuned.rds")
+
+# Model results
+gbm_tuned <- read_rds("models/classification/xgb_tuned.rds")
+
+gbm_tuned$results %>% slice_max(Accuracy)
 ```
+
+**After tuning, we improved the model accuracy very slightly to 0.931**. We will evaluate the performance of the model on test data.
+
+```{r}
+# Gradient Boosting Machine (tuned) model performance on test data
+test_results$gbm <- predict(gbm, classTest)
+confusionMatrix(test_results$gbm, test_results$test)
+```
+
+The results of Gradient Boosting Machine model is **not much better than Random Forest model** in terms of Accuracy. However, we get a **better specificity rate** and sensitivity is still quite high.
+
+```{r}
+# Adjusting threshold to improve specificity while maintaining high sensitivity
+test_results$gbm <- predict(gbm, classTest, type = "prob") %>% pull(No)
+test_results$gbm <- ifelse(test_results$gbm > 0.61, "No", "Yes") %>% factor(c( "No", "Yes"), levels = c( "No", "Yes"))
+confusionMatrix(test_results$gbm, test_results$test)
+```
+
+At **threshold around 0.61**, we obtain a model with **92% accuracy** and **improved the specificity by 5% (to 44%)** and only **traded off around 1.5% of sensitivity**. If we aim to improve specificity, we can set the threshold around 0.8, which will improve specificity up to 67% but at the same sensitivity would drop to around 93%.
+
+## Summary
+
+```{r}
+# Set at same threshold to compare
+test_results$logit <- predict(logit, classTest)
+test_results$knn <- predict(knn, classTest)
+test_results$trees <- predict(trees, classTest)
+test_results$rf <- predict(rf, classTest)
+test_results$gbm <- predict(gbm, classTest)
+
+summary_performance <- data.frame(
+  logit = confusionMatrix(test_results$logit, test_results$test)$overall,
+  knn = confusionMatrix(test_results$knn, test_results$test)$overall,
+  trees = confusionMatrix(test_results$trees, test_results$test)$overall,
+  rf = confusionMatrix(test_results$rf, test_results$test)$overall,
+  gbm = confusionMatrix(test_results$gbm, test_results$test)$overall
+) %>% 
+  t(.) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var="Model")
+
+# Visualization
+ggplot(summary_performance, aes(x = Accuracy, y = reorder(Model, Accuracy))) +
+  geom_point() +
+  geom_errorbar(aes(xmin = AccuracyLower, xmax = AccuracyUpper), width = 0.1) +
+  labs(x = "Accuracy", y = "Model",
+       title = "Best Performing Model Based on Accuracy: GBM (93.1%)") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5))
+```
+
+Out of all the models that we trained, **Gradient Boosting Machine performed the best** with accuracy around 93.1% on test data set. Although this is only a 3% improvement from the baseline model, in practice, it could provide a great opportunity for the hotels who can capture well its usage. For example, an improvement of 3% for 1000 bookings mean 30 bookings that the hotel could anticipate to deal with correctly, either giving them to other clients on waiting list or refer to partner hotels for commission. Based on our booking data set, the average total cost (in USD) per booking is **\$413**. For 30 bookings, this equals **\$12,407** that the hotel could capture or mitigate.
+
+```{r}
+# Most important Var
+importantVar <- rbind(
+  varImp(logit)$importance %>% slice_max(Overall, n=5) %>% rownames_to_column(var="Var") %>% mutate(model = "logit"),
+  varImp(knn)$importance %>% slice_max(No, n=5) %>% rownames_to_column(var="Var") %>% mutate(model = "knn") %>% select(-Yes) %>% rename(Overall = No),
+  varImp(trees)$importance %>% slice_max(Overall, n=5) %>% rownames_to_column(var="Var") %>% mutate(model = "trees"),
+  varImp(rf)$importance %>% slice_max(Overall, n=5) %>% rownames_to_column(var="Var") %>% mutate(model = "rf"),
+  varImp(gbm)$importance %>% slice_max(Overall, n=5) %>% rownames_to_column(var="Var") %>% mutate(model = "gbm")
+)
+
+importantVar %>%
+  mutate(Var = ifelse(grepl("start_commission_info", Var), "start_commission_info", Var)) %>% 
+  ggplot(aes(x = Overall, y = Var)) +
+  geom_col() +
+  facet_wrap(~model, scale = "free",
+             nrow = 3) +
+  labs(title = "Most Important Variable: Least Qualified Rate (lqr)") +
+  theme_classic() +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+        axis.title = element_blank())
+```
+
+If we look at the important variables within the models, we can see that for all models, **Lowest Qualified Rate (*lqr*) tends to be the most significant variable** in predicting a reservation's cancellation. The lowest qualified rate is the lowest rate that the client found through their platform that is used to benchmark their negotiated rates against the market ([Nasdaq, n.d.](https://data.nasdaq.com/databases/CHB#anchor-coverage)). Some other significant variables are lead time (time between check booking date and check in date), number of previous cancellations from the client (*client_cancellation*), and commission status of the hotel reservered (*start_commission_info*). We can hypothesize that **clients might be inclined to cancel as they find better rates on their platform, especially when they have a lot of lead time**. This could also be a pattern of booking for some clients as past cancellation is important for predicting their decision to cancel. Of course, if a client has never cancelled, there is little indication that they would start doing it.
+
+## Value Extraction
+
+```{r}
+# Df to compare prediction between GBM prediction and baseline model
+value <- classTest %>% 
+  select(nightly_rate_usd, cancelled) %>% 
+  cbind(., pred = test_results$gbm) %>% 
+  mutate(nightly_rate_usd = inverse_transform(nightly_rate_usd),
+         base = "No",
+         correct_base = ifelse(cancelled == base, 1,0),
+         correct_pred = ifelse(cancelled ==  pred , 1,0))
+
+# Compute value lost with base model (No cancellation assumption)
+(value %>% filter(correct_base == 1) %>% pull(nightly_rate_usd) %>% sum()) - (value %>% filter(correct_pred == 1) %>% pull(nightly_rate_usd) %>% sum())
+```
+
+With **Gradient Boosting Machine model,** although the improvement is small in percentage, it has bigger **implication for the hotels in terms of revenue opportunities** in practice. For example, if we compare the prediction of baseline, that is assuming no cancellation, and the prediction of the model, we can see that with the base model, we have a total opportunity lost of **\$6,545 per night** for all hotels. This is also without adjusting the threshold for the Gradient Boosting Machine model as we have seen before that depending on the objective between maximizing specificity and sensitivity, we could further enhance the prediction to identify more cancellations while keeping overbooking chance low.
 
 # Regression
 
 The other objective that we had was to predict the nightly rate (in USD) for these reservations. With the predictions, we can see whether the rates of the bookings were under or over valued, helping the hotels to better set price and capture more revenue.
 
-We will first run a multi-regression model to select some important features that contribute the most to explaining the variance in the nightly rates. After that, we will create 2 model formulas, one with lower complexity (less variables used for predictions) and the other with higher complexity (more variables). We will then train various statistical and machine learning models to finally compare and identify the best performing models.
-
-```{r}
-# inverse log
-# unscaled <- classTrain$nightly_rate_usd * 0.109 + 0.448
-# unnormalised <- unscaled * (log(max(booking_data$nightly_rate_usd) +1) - log(min(booking_data$nightly_rate_usd) +1)) + log(min(booking_data$nightly_rate_usd)+1)
-# unlogged <- exp(unnormalised) -1
-```
+We will first run a multi-regression model to **select some important features** that contribute the most to explaining the variance in the nightly rates. After that, we will create **2 model formulas**, one with lower complexity (less variables used for predictions) and the other with higher complexity (more variables). We will then train various statistical and machine learning models to finally compare and identify the best performing models.
 
 ## Data Splitting
 
 ```{r}
+# Split data into train and test set
 set.seed(5436)
 df <- read_rds("df_ready_for_ML.rds") %>% 
   select(-total_cost_usd)
@@ -506,37 +672,41 @@ The data splitting is done similarly to classification. However, we take out the
 ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5)
 ```
 
-To enhance reliability and accuracy of the models, for each of them we will perform 5-fold cross validation with 5 repeats. Since our training data have around 5000 observations, this selection is appropriate. For data sets with higher amount of data points, it would be better to consider more folds in each iteration.
+To enhance reliability and accuracy of the models, for each of them we will perform **5-fold cross validation with 5 repeats**. Since our training data have around 5000 observations, this selection is appropriate. For data sets with higher amount of data points, it would be better to consider more folds in each iteration.
 
 ## Model Selection
 
 ```{r}
+# Numeric features correlation check
 corr <- sort(cor(regTrain %>% select_if(is.numeric))["nightly_rate_usd",], decreasing = TRUE)
 corr <- data.frame(corr) %>% rownames_to_column()
 
+# Correlation visualization
 ggplot(corr, aes(x = rowname, y = corr)) +
   geom_bar(stat = "identity", fill = "lightblue") + 
   scale_x_discrete(limits= corr$rowname) +
-  labs(x = "Predictors", y = "Price", title = "Correlations") + 
-  theme(plot.title = element_text(hjust = 0, size = rel(1.5)),
+  labs(x = "Predictors", y = "Correlation", title = "Numeric Variables Have Low Correlation To Nightly Rate") + 
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face= "bold"),
         axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-For numeric variables, we can see that most have low correlation to our target variables. This would mean that we might have to include many variables in order to improve the prediction power. It also means that we need to consider adding various categorical variables. First, we will run a regression models including only some correlated numeric variables so examine the accuracy and noise of the model.
+For numeric variables, we can see that **most have low correlation to our target variables.** This would mean that we might have to include many variables in order to improve the prediction power. It also means that **we need to consider adding various categorical variables.** First, we will run a regression models including only some correlated numeric variables so examine the accuracy and noise of the model.
 
 ```{r}
+# Simple linear model with only numeric variables
 linFit <- lm(nightly_rate_usd ~ hotel_stars + agency_cancellation + leadtime + hotel_cancellation + client_cancellation + rate_offers + weekend_booking + amenities, data = regTrain)
 
 summary(linFit)
 ```
 
-R^2^ is very low, around 10%. We will need to add more variables, including categorical variables to improve the model. For some of our categorical features, there are lot of levels, which will make the training model more computationally intensive. We, therefore, will first identify some variables that have more contribution to improving R^2^ to add them to the final model.
+**R^2^ is very low, around 10%**. We will need to add more variables, including categorical variables to improve the model. For some of our categorical features, there are lot of levels, which will make the training model more computationally intensive. We, therefore, will first identify some variables that have more contribution to improving R^2^ to add them to the final model.
 
 ```{r}
+# Check for contribution toward prediction of each variable 
 ols_step_forward_p(linFit)
-```
 
-```{r}
+# Complex model with all variables to check for significant variables, including categorical variables
 linFit <- lm(nightly_rate_usd ~ ., data = regTrain)
 
 coef <- summary(linFit)$coefficients
@@ -546,18 +716,14 @@ coef[coef[,4] < 0.05,]
 Categorical variables that are significant: *hotel_country, start_commission_info, start_cancel_policy, start_rate_type, gic_sector, free_breakfast, concierge, check_in_month, bed_type, bed_number*.
 
 ```{r}
+# Select some significant variables for the model
 linFit <- lm(nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + hotel_country + start_commission_info + start_cancel_policy + start_rate_type, data = regTrain)
 
-summary(linFit)
-
-ols_step_forward_p(linFit)
-```
-
-```{r}
+# Check for contribution of each variable
 plot(ols_step_forward_p(linFit))
 ```
 
-Adding some categorical seems to improve the models a lot (by 30%!), which indicates that some categorical might be critical to the predictive models. For example, we can see from the graph that *hotel_longitude* and *hotel_country* improves the prediction by a lot more than other variables. This means that location might be one of the most important variables for predicting nightly rate. Overall, using 9-10 variables give us an R^2^ around 0.41 and after that adding more variables did not improve the model much.
+**Adding some categorical seems to improve the models a lot (by 30%!),** which indicates that some categorical might be critical to the predictive models. For example, we can see from the graph that *hotel_longitude* and *hotel_country* improves the prediction by a lot more than other variables. This means that location might be one of the most important variables for predicting nightly rate. Overall, **using 9-10 variables** give us an R^2^ around 0.41 and after that adding more variables did not improve the model much.
 
 ```{r}
 # Simple model 
@@ -566,7 +732,7 @@ modelS <- nightly_rate_usd ~ free_breakfast + hotel_stars + hotel_longitude + ho
 modelL <- nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + hotel_country + start_commission_info + start_cancel_policy + start_rate_type + gic_sector + checkin_month
 ```
 
-We build 2 model formulas, one less complicated with some numeric variables and categorical, the other with higher complexity, including all the significant numeric variables and categorical variables. For some statistical models, we will use modelS (lower complexity model) and for some others and machine learning model we will use modelL (higher complexity).
+We build **2 model formulas**, one less complicated with some numeric variables and categorical, the other with higher complexity, including all the significant numeric variables and categorical variables. For some statistical models, we will use **modelS (lower complexity model)** and for some others and machine learning model we will use **modelL (higher complexity).**
 
 ## Statistical Learning
 
@@ -582,7 +748,7 @@ basePred <-  rep(mean(regTrain$nightly_rate_usd), nrow(regTest))
 sqrt(mean((basePred - regTest$nightly_rate_usd)^2))
 ```
 
-We create a baseline model using mean of the nightly rate data of the train model as the prediction. It is rather difficult interpreting the performance as the feature had previously been transformed, normalized, and scaled in order to improve predictive power. Therefore, our objective will be to train models that have lower RMSE than the baseline model's and high R^2^ compared to all other models.
+We create a **baseline model** using mean of the nightly rate data of the train model as the prediction. It is rather difficult interpreting the performance as the feature had previously been transformed, normalized, and scaled in order to improve predictive power. Therefore, **our objective will be to train models that have lower RMSE than the baseline model's and high R^2^** compared to all other models.
 
 ### Linear Regression
 
@@ -595,14 +761,14 @@ lm <- read_rds("models/regression/lm.rds")
 lm
 ```
 
-The multi-linear regression model was trained using the low complexity model (modelS). The model has lower RMSE in the train data set but we will compare the performance against the baseline model with the prediction results.
+The **multi-linear regression model** was trained using the low complexity model (modelS). The model has **lower RMSE in the train data** set but we will compare the performance against the baseline model with the prediction results.
 
 ```{r}
 test_results$lm <- predict(lm, regTest)
 postResample(pred = test_results$lm, obs = test_results$test)
 ```
 
-The model performs a little less well on the testing set, with RMSE of 0.76 (compared to 0.78 on train data). R^2^, however, improved slightly (0.394 compared to 0.391).
+The **model performs a little less well on the testing set**, with **RMSE of 0.76** (compared to 0.78 on train data). **R^2^,** however, **improved slightly** (0.394 compared to 0.391).
 
 ```{r}
 ggplot(test_results, aes(x = lm, y = test)) +
@@ -613,7 +779,7 @@ ggplot(test_results, aes(x = lm, y = test)) +
   theme_bw()
 ```
 
-As the model's performance was only moderate, we can see the there is a lot of noise and error between the predicted and observed. We will further use other model methods to see whether we can improve the prediction.
+As the model's performance was only moderate, we can see the there is **a lot of noise and error** between the predicted and observed. We will further use other model methods to see whether we can improve the prediction.
 
 ### Forward Regression
 
@@ -635,7 +801,7 @@ fReg <- read_rds("models/regression/fReg_tuned.rds")
 fReg
 ```
 
-With forward selection, we did not improve the model performance, it seems that using Forward Regression, we would need to use all the possible variables in order to obtain the best-performing model. We We first use nvmax equals from 10 to 30 and the best model was nvmax = 30. We then further tuned the model, setting nvmax from 50 to 100 and the best model was with nvmax = 100.
+With **forward selection**, we **did not improve the model performance**, it seems that using Forward Regression, we would need to use all the possible variables in order to obtain the best-performing model. We We first use nvmax equals from 10 to 30 and the **best model was nvmax = 30**. We then further tuned the model, setting nvmax from 50 to 100 and the **best model was with nvmax = 100.**
 
 ```{r}
 plot(fReg)
@@ -644,12 +810,12 @@ plot(fReg)
 We can see from the graph that the higher number of predictors used for the model, the less error that model has. Although, the improving per adding a predictor does not improve the model's performance by a lot.
 
 ```{r}
-# Predict
+# Predict performance evaluation
 test_results$fReg <- predict(fReg, regTest)
 postResample(pred = test_results$fReg, obs = test_results$test)
 ```
 
-On test data set, the model performs better, with RMSE ofo 0.76 and R^2^ of 0.38. This is slightly worse than the multi-linear regression model and takes more time to train so the linear model is still better in practice.
+**On test data set, the model performs better,** with **RMSE** of **0.76** and **R^2^** of **0.38**. This is slightly worse than the multi-linear regression model and takes more time to train so the linear model is still better in practice.
 
 ### Backward Regression
 
@@ -670,7 +836,7 @@ bReg <- read_rds("models/regression/bReg_tuned.rds")
 bReg
 ```
 
-Similarly with Backward Regression, it seems that we would need to use all the features to obtain the best performing model. The model was tuned similarly to Forward Regression, with first tuning of nvmax from 10 to 30 and second tuning with nvmax from 50 to 100.
+Similarly with **Backward Regression**, it seems that we would need to use all the features to obtain the best performing model. The model was tuned similarly to Forward Regression, with first tuning of nvmax from 10 to 30 and second tuning with nvmax from 50 to 100.
 
 ```{r}
 plot(bReg)
@@ -679,12 +845,12 @@ plot(bReg)
 The slope for RSME again max number of predictors is also quite steep for Backward Regression model, indicating that adding more variables only gives incremental improvement to the model's performance.
 
 ```{r}
-# Predict
+# Predict performance evaluation
 test_results$bReg <- predict(bReg, regTest)
 postResample(pred = test_results$bReg,  obs = test_results$test)
 ```
 
-On test data set, the model performs slightly better than the Forward Regression model. However, the difference between the 2 models is negligible and both are more computationally intensive than the simpler Multi-regression model.
+**On test data set, the model performs slightly better than the Forward Regression model.** However, the **difference** between the 2 models **is negligible** and both are more computationally intensive than the simpler Multi-regression model.
 
 ### Stepwise Regression
 
@@ -699,7 +865,7 @@ sReg <- read_rds("models/regression/sReg_tuned.rds")
 sReg
 ```
 
-With Stepwise Regression, the model did not improve either. With more max number of variables, the model performs better but even with 100 maximum predictors, the model's performance is still worse than the previous models.
+With **Stepwise Regression**, the model did not improve either. With more max number of variables, the model performs better but even with **100 maximum predictors**, the model's performance is still worse than the previous models.
 
 ```{r}
 plot(sReg)
@@ -708,12 +874,12 @@ plot(sReg)
 The slope of the Stepwise Regression model's nvmax and RMSE is steep and for each higher max number of predictors, RSME reduces very little (roughtly 0.005 decline per 5 max number of predictors added).
 
 ```{r}
-# Predict
+# Predict performance evaluation
 test_results$sReg <- predict(sReg, regTest)
 postResample(pred = test_results$sReg,  obs = test_results$test)
 ```
 
-On test data, the Stepwise Regression model, however, performs better than the previous models. Although the improvement was little, since it performs better on new data, it means that the model might be less biased than the other models. Out of the all previously trained models, Stepwise Regression might be the best performing so far, at least on test data. To really check whether the model performs better on new data, we would need to have more test set and evaluate the model's performance on them.
+On test data, the **Stepwise Regression model, however, performs better than the previous models**. Although the improvement was little, since it performs better on new data, it means that the model might be less biased than the other models. Out of the all previously trained models, Stepwise Regression might be the best performing so far, at least on test data. To really check whether the model performs better on new data, we would need to have more test set and evaluate the model's performance on them.
 
 ### Ridge Regression
 
@@ -730,20 +896,21 @@ On test data, the Stepwise Regression model, however, performs better than the p
 ridge <- read_rds("models/regression/ridge_tuned.rds")
 ```
 
-For Ridge Regression, we tune the hyperparameter lambda from 0 to 0.1 with 100 steps. The best lambda was 0.011 and with this setting the model's performance is only slightly better than the base model and a lot worse than the previous models.
+For **Ridge Regression**, we tune the hyperparameter lambda from 0 to 0.1 with 100 steps. The **best lambda was 0.011** and with this setting the model's performance is only slightly better than the base model and a lot worse than the previous models.
 
 ```{r}
 plot(ridge)
 ```
 
-Plot the model with each hyperparameter iteration, we see that the best range for lambda is between 0 and 0.02 where RMSE's are the lowest. Since it is a curve with dip between this range, we would not be able to find a tuning that would improve the model more than its current performance. Therefore, Ridge Regression might not be the best model for our target variable. We will check this with the test data.
+Plot the model with each hyperparameter iteration, we see that the **best range for lambda is between 0 and 0.02** where RMSE's are the lowest. Since it is a curve with dip between this range, we would not be able to find a tuning that would improve the model more than its current performance. Therefore, Ridge Regression might not be the best model for our target variable. We will check this with the test data.
 
 ```{r}
+# Predict performance evaluation
 test_results$ridge <- predict(ridge, regTest)
 postResample(pred = test_results$ridge,  obs = test_results$test)
 ```
 
-The model's performance is better than the train data. However, it is still worse than all the previous models.
+The model's performance is better than the train data. However, it is still **worse than all the previous models.**
 
 ### Lasso
 
@@ -787,14 +954,15 @@ lasso_tuned
 plot(lasso_tuned)
 ```
 
-It seems that after tunning with fraction from 0.1 to 1. The best models for Lasso Regression is with fraction equal to 0.927. However, the performance of the model is still not much better than the previous models.
+It seems that after tunning with fraction from 0.1 to 1. The **best models for Lasso Regression is with fraction equal to 0.927**. However, the performance of the model is still not much better than the previous models.
 
 ```{r}
+# Predict performance evaluation
 test_results$lasso <- predict(lasso, regTest)
 postResample(pred = test_results$lasso,  obs = test_results$test)
 ```
 
-On test data, the model also does not perform well. Its performance is worse than the baseline model and we perhaps should not consider Lasso as a predictive model for our case.
+On test data, the model also does not perform well. Its **performance is worse than the baseline model** and we perhaps should not consider Lasso as a predictive model for our case.
 
 ### Elastic Net
 
@@ -811,14 +979,15 @@ eNet <- read_rds("models/regression/eNet_tuned.rds")
 eNet
 ```
 
-Elastic Net model seems to perform a lot better at alpha equal to 0.12 and lambda equal to 0.01 than Ridge and Lasso Regression models. Although, the performance of the model is only slightly better than Linear, Forward, and Backward Regression.
+Elastic Net model seems to **perform a lot better at alpha equal to 0.12** and **lambda equal to 0.01** than Ridge and Lasso Regression models. Although, the performance of the model is only slightly better than Linear, Forward, and Backward Regression.
 
 ```{r}
+# Predict performance evaluation
 test_results$eNet <- predict(eNet, regTest)
 postResample(pred = test_results$eNet,  obs = test_results$test)
 ```
 
-On test data, however, the model performs slightly better. Compared to all previous models' performance on test set, Elastic Net performs better than all of them. However, this result is still not significantly better than Multi-linear Regression or Stepwise Regression but only a little.
+On test data, however, the model performs slightly better. Compared to all previous models' performance on test set, Elastic Net performs better than all of them. However, this result is still **not significantly better than Multi-linear Regression or Stepwise Regression** but only a little.
 
 ## Machine Learning
 
@@ -835,7 +1004,7 @@ knn <- read_rds("models/regression/knn.RDS")
 knn
 ```
 
-With the Machine Learning model k-Nearest Neighbors, the model performs best where kmax = 9, distance = 2, and kernal = 2 based on our hyperparameter setting. We could further tune this model with different hyperparameter settings. However, kNN model is known to perform better on a different set of problems where physical network plays an important role in predicting the dependent variable, which is not our case.
+With the Machine Learning model **k-Nearest Neighbors**, the model performs **best where kmax = 9, distance = 2, and kernal = 2** based on our hyperparameter setting. We could further tune this model with different hyperparameter settings. However, kNN model is known to perform better on a different set of problems where physical network plays an important role in predicting the dependent variable, which is not our case.
 
 ```{r}
 plot(knn)
@@ -844,12 +1013,13 @@ plot(knn)
 By plotting the model performance against max number of neighbors selected, we can see that the model is likely to be able to improve with higher set of max neighbors and perhaps other hyperparameters.
 
 ```{r}
+# Predict performance evaluation
 test_results$knn <- predict(knn, regTest)
 
 postResample(pred = test_results$knn,  obs = test_results$test)
 ```
 
-On test data, kNN model does not perform better than the majority of regression models. The model performs better than the baseline but it is a lot more computationally intensive than some regression model with a simpler formula.
+On test data, **kNN model does not perform better than the majority of regression models.** The model performs better than the baseline but it is a lot more computationally intensive than some regression model with a simpler formula.
 
 ### Random Forest
 
@@ -871,18 +1041,13 @@ rf <- read_rds("models/regression/rf.rds")
 rf
 ```
 
-On training the model using Random Forest, we first tune the model with mtry from 2 to 4, splitrule = variance and min.node.size from 1 to 4. The best performing model was at mtry = 4 and min.node.size = 2, with RMSE around 0.84 and R^2^ around 0.40. This is not better than the best performing models that we have so far. We will further tune the model to improve its performance.
+On training the model using **Random Forest,** we first tune the model with mtry from 2 to 4, splitrule = variance and min.node.size from 1 to 4. The **best performing model was at mtry = 4 and min.node.size = 2,** with **RMSE around 0.84** and **R^2^ around 0.40**. This is not better than the best performing models that we have so far. We will further tune the model to improve its performance.
 
 ```{r}
-plot(rf)w
+plot(rf)
 ```
 
 The model performs best with 4 randomly selected predictors and min.node.size = 2. We, therefore, will tune the model with a higher number of maximum randomly selected predictors to see whether the performance of the model improves.
-
-```{r}
-impVar <- varImp(rf)
-plot(impVar)
-```
 
 ```{r}
 # rfGrid <- expand.grid(
@@ -902,16 +1067,15 @@ rf_tuned <- read_rds("models/regression/rf2.rds")
 rf_tuned
 ```
 
-After tuning with mtry from 4 to 8, splitrule between variance and extratrees, and min.node.size = 1, the best performing model was set with mtry = 8, splitrule = variance, and min.node.size = 1. At this parameter setting, the Random Forest model takes place as the best-performing all of all the current models with RMSE around 0.75 and R^2^ around 0.50. This is moderately better than all of the previous models that we trained but still in practice, it is not a very high R^2^ .
+After tuning with mtry from 4 to 8, splitrule between variance and extratrees, and min.node.size = 1, the **best performing model was set with mtry = 8, splitrule = variance, and min.node.size = 1**. At this parameter setting, the Random Forest model takes place as the best-performing all of all the current models with R**MSE around 0.75 and R^2^ around 0.50**. This is moderately better than all of the previous models that we trained but still in practice, it is not a very high R^2^ .
 
 ```{r}
+# Predict performance evaluation
 test_results$rf <- predict(rf_tuned, regTest)
-
 postResample(pred = test_results$rf,  obs = test_results$test)
-
 ```
 
-The Random Forest model performs slightly better on test data set, with RMSE down to 0.71 and R^2^ around 0.51. Again, this is the best model that we have trained so far but also it is a lot more computationally expensive than the all of the current models.
+The Random Forest model performs slightly better on test data set, with RMSE down to 0.71 and R^2^ around 0.51. Again, this is **the best model that we have trained so far** but also it is a lot more computationally expensive than the all of the current models.
 
 ### Gradient Boosting
 
@@ -923,10 +1087,10 @@ The Random Forest model performs slightly better on test data set, with RMSE dow
 # saveRDS(gb, "models/regression/gb.rds")
 
 gb <- read_rds("models/regression/gb.rds")
-gb 
+gb$results %>% slice_min(RMSE) 
 ```
 
-At tuneLength =5, the best performing Gradient Boosting Machine model was set with values of nrounds = 250, max_depth = 5, eta = 0.3, gamma = 0, colsample_bytree = 0.6, and min_child_weight = 1. The model also performs better than Random Forest and has much higher accuracy than all of the models (RMSE around 0.61 and R^2^ around 0.62).
+At tuneLength =5, the **best performing Gradient Boosting Machine model was set with values of nrounds = 250, max_depth = 5, eta = 0.3, gamma = 0, colsample_bytree = 0.6, and min_child_weight = 1.** The model also performs better than Random Forest and has **much higher accuracy than all of the models** (**RMSE around 0.61 and R^2^ around 0.62).**
 
 ```{r}
 plot(gb)
@@ -950,40 +1114,162 @@ Looking at the plots of the model's performance at different hyperparamter setti
 # saveRDS(gb_tuned, "models/regression/gb_tuned.rds")
 
 gb_tuned <- read_rds("models/regression/gb_tuned.rds")
-gb_tuned
+gb_tuned$results %>% slice_min(RMSE)
 ```
 
-After tuning, our Gradient Boosting Machine model slightly improved with RMSE around 0.60 and R^2^ around 0.63. This is only a slight improvement considering the computation time was a lot longer. It seems that better tunning might be necessary to see a significant improvement in the model. It seems that to get better performance, we would need to try with higher nrounds, max_depth = 5, lower eta than 0.1, gamma around 1, colsample_bytree betwene 0.6 and 1, min_child_weight = 1, and subsample lower than 1,
+After tuning, our Gradient Boosting Machine model slightly improved with **RMSE** around **0.60** and **R^2^** around **0.63**. This is only a slight improvement considering the computation time was a lot longer. It seems that better tuning might be necessary to see a significant improvement in the model. It seems that **to get better performance, we would need to try with higher nrounds, max_depth = 5, lower eta than 0.1, gamma around 1, colsample_bytree betwene 0.6 and 1, min_child_weight = 1, and subsample lower than 1,**
 
 ```{r}
+# Predict performance evaluation
 test_results$gb <- predict(gb_tuned, regTest)
-
 postResample(pred = test_results$gb,  obs = test_results$test)
 ```
 
-On test data, Gradient Boosting Machine remains the best-performing model out of all the models that is able to explain around 62% of the variance in nightly rate and predict on average +-0.60 units from the actual values.
-
-### Neural Networks
-
-```{r}
-nn <- train(nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number , # Removed some features with many levels
-            data = regTrain,
-            method = "neuralnet",
-            trControl = ctrl,
-            preProcess = c("nzv"),
-            tuneGrid = expand.grid(layer1 = c(4, 2),
-                                   layer2 = c(2, 1, 0),
-                                   layer3 = c(0))
-)
-saveRDS(nn, "models/regression/nn.rds")
-```
-
-```{r}
-test_results$nn <- predict(nn, regTest)
-
-postResample(pred = test_results$nn,  obs = test_results$test)
-```
+On test data, Gradient Boosting Machine remains the **best-performing model** out of all the models that is able to explain around **62% of the variance** in nightly rate and predict on average **+-0.60 units from the actual values.**
 
 ### Ensemble
 
+```{r}
+apply(test_results[-1], 2, function(x) mean(abs(x - test_results$test)))
+```
+
+All of the models, Gradient Boosting Machine gives us the lowest error (0.44) on testing data while the worst performer is Lasso (0.69). The best 3 models that we will use for the ensemble model will be:
+
+1.  Gradient Boosting Machine
+2.  Random Forest
+3.  Elastic Net
+
+```{r}
+# Predict performance evaluation of ensemble model
+test_results$comb = (test_results$gb + test_results$rf + test_results$eNet)/3
+postResample(pred = test_results$comb,  obs = test_results$test)
+```
+
+The en**semble model still performs a little less well than the Gradient Boosting Machine** alone. However, the data set that we had acquired is just a small sample and, therefore, the best-performing model is subjected to change as we predict on more new data. For value extraction in our case, we will proceed to use only the Gradient Boosting Machine Model as it is our current best model.
+
+## Summary
+
+```{r}
+extract_result <- function(mod, data) {
+  res <- postResample(data[,mod], data$test) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  rownames_to_column("model") %>% 
+  mutate(model = mod)
+}
+
+summary_performance <- rbind(
+  lm = extract_result("lm", test_results),
+  fReg = extract_result("fReg", test_results),
+  bReg = extract_result("bReg", test_results),
+  sReg = extract_result("sReg", test_results),
+  ridge = extract_result("ridge", test_results),
+  lasso = extract_result("lasso", test_results),
+  eNet = extract_result("eNet", test_results),
+  knn = extract_result("knn", test_results),
+  rf = extract_result("rf", test_results),
+  gb = extract_result("gb", test_results),
+  ensemble = extract_result("comb", test_results)
+)
+
+ggplot(summary_performance, 
+              aes(x = reorder(model, Rsquared), y = Rsquared)) +
+  geom_point() +
+  coord_flip() +
+  labs(x = "Model", y = "R-squared",
+       title = "Best Performing Model Based on R-squared: GBM (0.62)") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size =14, hjust = 0.5))
+```
+
+From the graph, we see clearer that Gradient Boosting is the best performing model out of all models that we trained. Although, in practice, the performance of the model is still only moderate (R^2^ = 0.62). However, we could still apply the model to produce some values from the hotel bookings.
+
+```{r}
+importantVar <- rbind(
+  varImp(lm)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "lm"),
+  varImp(fReg)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "fReg"),
+  varImp(bReg)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "bReg"),
+  varImp(sReg)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "sReg"),
+  varImp(ridge)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "ridge"),
+  varImp(lasso)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "lasso"),
+  varImp(eNet)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "eNet"),
+  varImp(knn)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "knn"),
+  varImp(rf)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "rf"),
+  varImp(gb)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "gb")
+)
+
+importantVar %>% 
+  mutate(Var = case_when(
+    grepl("hotel_country", Var) ~ "hotel_country",
+    grepl("start_commission_info", Var) ~ "start_commission_info",
+    grepl("start_cancel_policy", Var) ~ "start_cancel_policy",
+    TRUE ~ Var)) %>% 
+  group_by(Var) %>% 
+  summarize(avg_importance = mean(Overall)) %>% 
+  arrange(desc(avg_importance)) %>% 
+  slice_max(avg_importance, n = 10) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = avg_importance, y = Var)) +
+    geom_point() +
+    labs(x = "Average Importance", y = "Variable",
+         title = "Hotel's Location Is The Most Important For Nightly Rate",
+         subtitle= "Adding Free Breakfast Comes in Second Place") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size =14, hjust = 0.5),
+        plot.subtitle = element_text(size = 14, hjust = 0.5))
+```
+
+For all of our models, on average, *hotel_longitude* has the highest level of importance in predicting nightly rate, *hotel_country* is also on the top 10 list, therefore, the **location of the hotel might be one critical component** influencing the rate of the bookings. **Additional services** such *free_breakfast* also has high impact on the nightly rate according to the models. It is quite usual that bookings become more expensive when meals are included. Hotel's stars also seem to affect the nightly rate, this is also quite common that the more stars the hotel has, the level of services and facility also goes up, hence increasing the rate of the hotel.
+
 ## Prediction
+
+```{r}
+# Prediction intervals
+y <- inverse_transform(test_results$test)
+yhat <- inverse_transform(test_results$gb)
+error <- y - yhat
+
+# Using random 10% of errors to compute noise
+set.seed(235634)
+index <- createDataPartition(error, p = 0.1, list = FALSE)
+noise <- error[index]
+
+# 90% confidence prediction intervals
+lower <- yhat[-index] + quantile(noise, 0.05, na.rm = TRUE)
+upper <- yhat[-index] + quantile(noise, 0.95, na.rm = TRUE)
+
+# Performance with intervals
+pred <- data.frame(real=y[-index], fit = yhat[-index], lower = lower, upper=upper) %>% 
+  mutate(underValued = ifelse(real < lower, 1,0) %>% as.factor(),
+         lostOp = ifelse(underValued == 1, lower - real, 0))
+
+# Visualize
+ggplot(pred, aes(x = fit, y = real)) + 
+  geom_point(aes(color = factor(underValued, levels = c(1,0)))) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.5) +
+  labs(x = "Predicted Rate", y = "Actual Rate", 
+       title = paste0("Predicted Opportunity Loss Cost per Night: $", round(sum(pred$lostOp),2))) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+        legend.position = "none")
+```
+
+Using our best model (Gradient Boosting Machine), we could estimate the lost opportunities for bookings that were under the expected rate. To do this, we first compute a 90% confince interval by using 10% of the error data points assigned at random as noise. We then identify bookings that had a lower nightly rate than the lower bound of the interval. These rates are then added together to produce the lost nightly rate for our test data set. For our testing data set, there is an **overall lost nightly rate opportunity of \$1967!** Even though this is an estimate for all bookings from various hotels, we could calculate the lost rate for each hotel as well by merging with the original booking identification data.
+
+# Conclusion
+
+Predicting nightly rates and booking cancellations using our dataset proved to be a **challenging task.** Despite this, we successfully improved predictive performance over the baseline using various statistical and machine learning models. While the **improvements were modest**, they had **substantial financial implications** for hotel providers. As demonstrated, implementing the Gradient Boosting Machine (GBM) model could potentially **mitigate \$6,500 in losses per night due to cancellations** and **increase revenue by up to \$1,900 per night through optimized pricing strategies.**
+
+Among all models tested, **GBM emerged as the best-performing model** for both regression and classification tasks. However, the model is computationally expensive compared to simpler models. Further hyperparameter tuning could be conducted to enhance predictive accuracy while balancing computational efficiency.
+
+Future research could explore additional models, such as Support Vector Machines (SVM) for cancellation prediction, or alternative implementations of existing models, such as the "ranger" package for an optimized Random Forest approach. These refinements could further improve predictive accuracy and provide deeper insights, supporting more effective decision-making in hotel revenue management.
+
+# Citations
+
+Antonio, N., Almeida, A. d., & Nunes, L. (2019). Hotel booking demand datasets. *Data in Brief, 22*, 41–49. <https://doi.org/10.1016/j.dib.2018.11.126>
+
+Navan. (2023). *What is the difference between leisure and business travel?*\
+<https://navan.com/blog/traveler-experience/what-is-the-difference-between-leisure-and-business-travel>
+
+Nasdaq. (n.d.). *China Hotel Booking (CHB) database*. Nasdaq Data Link.\
+<https://data.nasdaq.com/databases/CHB#anchor-coverage>
