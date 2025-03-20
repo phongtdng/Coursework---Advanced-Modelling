@@ -294,15 +294,12 @@ saveRDS(df_final, "df_ready_for_ML.rds")
 
 ```{r}
 set.seed(5436)
-df <- read_rds("df_ready_for_ML.rds")
+df <- read_rds("df_ready_for_ML.rds") %>% select(-booking_change)
 
 trainIndex <- createDataPartition(df$cancelled, p = 0.8, list = FALSE)
 
 classTrain <- df[trainIndex,]
 classTest <- df[-trainIndex,]
-
-# Df to compare prediction results
-test_results <- data.frame(test = classTest$cancelled)
 ```
 
 ## Statistical Classification
@@ -313,6 +310,9 @@ ctrl <- trainControl(method = "repeatedcv", number = 5, repeats = 5, classProbs 
 
 levels(classTrain$cancelled) <- c("No", "Yes")
 levels(classTest$cancelled) <- c("No", "Yes")
+
+# Df to compare prediction results
+test_results <- data.frame(test = classTest$cancelled)
 ```
 
 ### Baseline
@@ -332,11 +332,11 @@ The baseline model has a very high accuracy of 90%. This is normal as we have a 
 ```{r warning = FALSE}
 # set.seed(3245)
 # # Model train
-# logit <- train(cancelled ~., data = classTrain,
-#                method = "glm",
-#                trControl = ctrl,
-#                family = "binomial")
-# saveRDS(logit, "models/classification/logit.rds")
+logit <- train(cancelled ~., data = classTrain,
+               method = "glm",
+               trControl = ctrl,
+               family = "binomial")
+saveRDS(logit, "models/classification/logit.rds")
 
 # Model results
 logit <- read_rds("models/classification/logit.rds")
@@ -374,11 +374,11 @@ lda
 
 ```{r}
 # Model train
-# knn <- train(cancelled ~., data = classTrain,
-#              method = "knn",
-#              trControl = ctrl,
-#              tuneGrid = expand.grid(k = seq(1, 25, by = 2)))
-# saveRDS(knn, "models/classification/knn.rds")
+knn <- train(cancelled ~., data = classTrain,
+             method = "knn",
+             trControl = ctrl,
+             tuneGrid = expand.grid(k = seq(1, 25, by = 2)))
+saveRDS(knn, "models/classification/knn.rds")
 
 # Model results
 knn <- read_rds("models/classification/knn.rds")
@@ -404,7 +404,14 @@ trees <- train(cancelled ~., data = classTrain,
                control = rpart.control(minsplit = 20, maxdepth = 10, cp=0.01),
                tuneLength = 10)
 saveRDS(trees, "models/classification/trees.rds")
+
+# Model result
+trees <- read_rds("models/classification/trees.rds")
 trees
+```
+
+```{r}
+plot(trees)
 ```
 
 ### Random Forests
