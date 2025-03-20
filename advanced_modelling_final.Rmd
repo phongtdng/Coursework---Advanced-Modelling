@@ -1169,4 +1169,41 @@ ggplot(summary_performance,
 
 From the graph, we see clearer that Gradient Boosting is the best performing model out of all models that we trained. Although, in practice, the performance of the model is still only moderate (R^2^ = 0.62). However, we could still apply the model to produce some values from the hotel bookings.
 
+```{r}
+importantVar <- rbind(
+  varImp(lm)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "lm"),
+  varImp(fReg)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "fReg"),
+  varImp(bReg)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "bReg"),
+  varImp(sReg)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "sReg"),
+  varImp(ridge)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "ridge"),
+  varImp(lasso)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "lasso"),
+  varImp(eNet)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "eNet"),
+  varImp(knn)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "knn"),
+  varImp(rf)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "rf"),
+  varImp(gb)$importance %>% slice_max(Overall, n=10) %>% rownames_to_column(var="Var") %>% mutate(model = "gb")
+)
+
+importantVar %>% 
+  mutate(Var = case_when(
+    grepl("hotel_country", Var) ~ "hotel_country",
+    grepl("start_commission_info", Var) ~ "start_commission_info",
+    grepl("start_cancel_policy", Var) ~ "start_cancel_policy",
+    TRUE ~ Var)) %>% 
+  group_by(Var) %>% 
+  summarize(avg_importance = mean(Overall)) %>% 
+  arrange(desc(avg_importance)) %>% 
+  slice_max(avg_importance, n = 10) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = avg_importance, y = Var)) +
+    geom_point() +
+    labs(x = "Average Importance", y = "Variable",
+         title = "Hotel's Location Is The Most Important For Predicting Nightly Rate",
+         subtitle= "Adding Free Breakfast Comes in Second Place") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size =14, hjust = 0.5),
+        plot.subtitle = element_text(size = 14, hjust = 0.5))
+```
+
+For all of our models, on average, hotel_longitude has the highest level of importance in predicting nightly rate, hotel_country is also on the top 10 list, therefore, the location of the hotel might be one critical component influencing the rate of the bookings. Additional services such free_breakfast also has high impact on the nightly rate according to the models. It is quite usual that bookings become more expensive when meals are included. Hotel's stars also seem to affect the nightly rate, this is also quite common that the more stars the hotel has, the level of services and facility also goes up, hence increasing the rate of the hotel.
+
 ## Prediction
