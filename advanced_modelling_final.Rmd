@@ -371,14 +371,6 @@ confusionMatrix(test_results$logit, test_results$test)
 
 It seems that at threshold between 0.6 and 0.7, we get the best model with accuracy of 91% and increase the specificity by 11% while sensitivity only decreased by 2%.
 
-### Bayes Classifiers
-
-```{r}
-# Model train
-lda <- lda(classTrain[,-14], grouping = classTrain[,14])
-lda
-```
-
 ## Machine Learning Classification
 
 ### kNN
@@ -546,18 +538,6 @@ confusionMatrix(test_results$gbm, test_results$test)
 ```
 
 At threshold around 0.61, we obtain a model with 92% accuracy and improved the specificity by 5% (to 44%) and only traded off around 1.5% of sensitivity. If we aim to improve specificity, we can set the threshold around 0.8, which will improve specificity up to 67% but at the same sensitivity would drop to around 93%.
-
-### Neural Networks
-
-```{r}
-# nn <- train(cancelled ~. , data = classTrain,
-#             method = "nnet",
-#             trControl = ctrl,
-#             tuneGrid = expand.grid(size = c(5),
-#                                    decay = c(0.1)))
-# saveRDS(nn, "models/classification/nn.rds")
-# nn
-```
 
 ## Summary
 
@@ -1110,27 +1090,6 @@ postResample(pred = test_results$gb,  obs = test_results$test)
 ```
 
 On test data, Gradient Boosting Machine remains the best-performing model out of all the models that is able to explain around 62% of the variance in nightly rate and predict on average +-0.60 units from the actual values.
-
-### Neural Networks
-
-```{r}
-# nn <- train(nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number , # Removed some features with many levels
-#             data = regTrain,
-#             method = "neuralnet",
-#             trControl = ctrl,
-#             preProcess = c("nzv"),
-#             tuneGrid = expand.grid(layer1 = c(4, 2),
-#                                    layer2 = c(2, 1, 0),
-#                                    layer3 = c(0))
-# )
-# saveRDS(nn, "models/regression/nn.rds")
-```
-
-```{r}
-# test_results$nn <- predict(nn, regTest)
-# 
-# postResample(pred = test_results$nn,  obs = test_results$test)
-```
 
 ### Ensemble
 
