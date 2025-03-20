@@ -22,6 +22,7 @@ library(conflicted)
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
 library(olsrr)
+library(ggpubr)
 ```
 
 # Data
@@ -1130,5 +1131,42 @@ postResample(pred = test_results$comb,  obs = test_results$test)
 ```
 
 The ensemble model still performs a little less well than the Gradient Boosting Machine alone. However, the data set that we had acquired is just a small sample and, therefore, the best-performing model is subjected to change as we predict on more new data. For value extraction in our case, we will proceed to use only the Gradient Boosting Machine Model as it is our current best model.
+
+## Summary
+
+```{r}
+extract_result <- function(mod, data) {
+  res <- postResample(data[,mod], data$test) %>%
+  t() %>% 
+  as.data.frame() %>% 
+  rownames_to_column("model") %>% 
+  mutate(model = mod)
+}
+
+summary_performance <- rbind(
+  lm = extract_result("lm", test_results),
+  fReg = extract_result("fReg", test_results),
+  bReg = extract_result("bReg", test_results),
+  sReg = extract_result("sReg", test_results),
+  ridge = extract_result("ridge", test_results),
+  lasso = extract_result("lasso", test_results),
+  eNet = extract_result("eNet", test_results),
+  knn = extract_result("knn", test_results),
+  rf = extract_result("rf", test_results),
+  gb = extract_result("gb", test_results),
+  ensemble = extract_result("comb", test_results)
+)
+
+ggplot(summary_performance, 
+              aes(x = reorder(model, Rsquared), y = Rsquared)) +
+  geom_point() +
+  coord_flip() +
+  labs(x = "Model", y = "R-squared",
+       title = "Best Performing Model Based on R-squared: GBM (0.62)") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size =14, hjust = 0.5))
+```
+
+From the graph, we see clearer that Gradient Boosting is the best performing model out of all models that we trained. Although, in practice, the performance of the model is still only moderate (R^2^ = 0.62). However, we could still apply the model to produce some values from the hotel bookings.
 
 ## Prediction
