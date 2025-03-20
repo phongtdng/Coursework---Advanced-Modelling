@@ -436,13 +436,40 @@ We can set a high threshold around 0.8 to increase the specificity to 60%. With 
 ### Random Forests
 
 ```{r}
-rf <- train(cancelled ~. , data = classTrain,
-            method = "rf",
-            trControl = ctrl,
-            tuneLength = 10)
-saveRDS(rf, "models/classification/rf.rds")
+# Model training
+# rf <- train(cancelled ~. , data = classTrain,
+#             method = "rf",
+#             trControl = ctrl,
+#             tuneLength = 10)
+# saveRDS(rf, "models/classification/rf.rds")
+
+# Model results
+rf <- read_rds("models/classification/rf.rds")
 rf
 ```
+
+With Random Forest, our best performing model has an accuracy of 93% at mtry = 25. This is a 3% of improvement compared to the baseline model.
+
+```{r}
+plot(rf)
+```
+
+By plotting the accuracy against the maximum number of randomly selected predictors (mtry), we can see that we obtain the best model around mtry = 25. There will be no need for further tuning. To improve the model, we would need to try to train with a different method than "rf" with more hyperparameters.
+
+```{r}
+test_results$rf <- predict(rf, classTest)
+confusionMatrix(test_results$rf, test_results$test)
+```
+
+Similarly to performance on train data set, our Random Forest model has an accuracy around 93% on test data set, with better specificity than the previous models (around 34%) while sensitivity maintains high (around 99%).
+
+```{r}
+test_results$rf <- predict(rf, classTest, type = "prob") %>% pull(No)
+test_results$rf <- ifelse(test_results$rf > 0.6, "No", "Yes") %>% factor(c("Yes", "No"), levels = c("Yes", "No"))
+confusionMatrix(test_results$rf, test_results$test)
+```
+
+We get a healthy trade-off between specificity and sensitivity at threshold around 0.6. At this threshold, accuracy stays high (close to 94%) while we only traded off 1% off sensitivity for 17% of specificity. If our goal was to improve specificity as much as possible, a threshold around 0.7 to 0.8 would be the best without risking too many overbookings.
 
 ### Gradient Boosting
 
@@ -474,8 +501,6 @@ gbm_tuned <- train(cancelled ~. , data = classTrain,
 saveRDS(gbm_tuned, "models/classification/xgb_tuned.rds")
 gbm_tuned
 ```
-
-### Support Vector Machines
 
 ### Neural Networks
 
