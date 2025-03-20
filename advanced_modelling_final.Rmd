@@ -530,7 +530,7 @@ The results of Gradient Boosting Machine model is not much better than Random Fo
 
 ```{r}
 test_results$gbm <- predict(gbm, classTest, type = "prob") %>% pull(No)
-test_results$gbm <- ifelse(test_results$gbm > 0.8, "No", "Yes") %>% factor(c( "No", "Yes"), levels = c( "No", "Yes"))
+test_results$gbm <- ifelse(test_results$gbm > 0.61, "No", "Yes") %>% factor(c( "No", "Yes"), levels = c( "No", "Yes"))
 confusionMatrix(test_results$gbm, test_results$test)
 ```
 
@@ -579,6 +579,8 @@ ggplot(summary_performance, aes(x = Accuracy, y = reorder(Model, Accuracy))) +
   theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5))
 ```
 
+Out of all the models that we trained, Gradient Boosting Machine performed the best with accuracy around 93.1% on test data set. Although this is only a 3% improvement from the baseline model, in practice, it could provide a great opportunity for the hotels who can capture well its usage. For example, an improvement of 3% for 1000 bookings mean 30 bookings that the hotel could anticipate to deal with correctly, either giving them to other clients on waiting list or refer to partner hotels for commission. Based on our booking data set, the average total cost (in USD) per booking is \$413. For 30 bookings, this equals \$12,407 that the hotel could capture or mitigate.
+
 ```{r}
 # Most important Var
 importantVar <- rbind(
@@ -591,12 +593,14 @@ importantVar <- rbind(
 
 importantVar %>%
   mutate(Var = ifelse(grepl("start_commission_info", Var), "start_commission_info", Var)) %>% 
-  ggplot(aes(x = Overall, y = reorder(Var, Overall))) +
+  ggplot(aes(x = Overall, y = Var)) +
   geom_col() +
   facet_wrap(~model, scale = "free",
              nrow = 3) +
   theme_classic()
 ```
+
+If we look at the important variables within the models, we can see that for all models, Lowest Qualified Rate (lqr) tends to be the most significant variable in predicting a reservation's cancellation. The lowest qualified rate is the lowest rate that the client found through their platform that is used to benchmark their negotiated rates against the market (<https://data.nasdaq.com/databases/CHB#anchor-coverage>). Some other significant variables are lead time (time between check booking date and check in date), number of previous cancellations from the client (client_cancellation), and commission status of the hotel reservered (start_commission_info). Wecan hypothesize that clients might be inclined to cancel as they find better rates on their platform, especially when they have a lot of lead time. This could also be a pattern of booking for some clients as past cancellation is important for predicting their decision to cancel. Of course, if a client has never cancelled, there is little indication that they would start doing it.
 
 # Regression
 
