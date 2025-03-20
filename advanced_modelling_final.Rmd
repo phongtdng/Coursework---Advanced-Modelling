@@ -579,6 +579,25 @@ ggplot(summary_performance, aes(x = Accuracy, y = reorder(Model, Accuracy))) +
   theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5))
 ```
 
+```{r}
+# Most important Var
+importantVar <- rbind(
+  varImp(logit)$importance %>% slice_max(Overall, n=5) %>% rownames_to_column(var="Var") %>% mutate(model = "logit"),
+  varImp(knn)$importance %>% slice_max(No, n=5) %>% rownames_to_column(var="Var") %>% mutate(model = "knn") %>% select(-Yes) %>% rename(Overall = No),
+  varImp(trees)$importance %>% slice_max(Overall, n=5) %>% rownames_to_column(var="Var") %>% mutate(model = "trees"),
+  varImp(rf)$importance %>% slice_max(Overall, n=5) %>% rownames_to_column(var="Var") %>% mutate(model = "rf"),
+  varImp(gbm)$importance %>% slice_max(Overall, n=5) %>% rownames_to_column(var="Var") %>% mutate(model = "gbm")
+)
+
+importantVar %>%
+  mutate(Var = ifelse(grepl("start_commission_info", Var), "start_commission_info", Var)) %>% 
+  ggplot(aes(x = Overall, y = reorder(Var, Overall))) +
+  geom_col() +
+  facet_wrap(~model, scale = "free",
+             nrow = 3) +
+  theme_classic()
+```
+
 # Regression
 
 The other objective that we had was to predict the nightly rate (in USD) for these reservations. With the predictions, we can see whether the rates of the bookings were under or over valued, helping the hotels to better set price and capture more revenue.
