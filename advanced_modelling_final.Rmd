@@ -300,6 +300,9 @@ trainIndex <- createDataPartition(df$cancelled, p = 0.8, list = FALSE)
 
 classTrain <- df[trainIndex,]
 classTest <- df[-trainIndex,]
+
+# Df to compare prediction results
+test_results <- data.frame(test = classTest$cancelled)
 ```
 
 ## Statistical Classification
@@ -322,22 +325,42 @@ basePred <- rep("No", nrow(classTest)) %>% factor(c("No", "Yes"),levels = c("No"
 confusionMatrix(basePred, classTest$cancelled)
 ```
 
+The baseline model has a very high accuracy of 90%. This is normal as we have a moderate degree of data imbalance in the target class. However, the accuracy is not the sole metric that we aim for. In our problem, we would want to improve the specificity of the model for some trade-off of sensitivity. If we predict for a reservation to be a no cancellation when it turns out to be a cancellation, we lose the potential to anticipate and replace with another reservation, consequentially have revenue loss. Of course, there is also a risk for trading off sensitivity. If we anticipate cancellation of a booking and it turns out not cancelled and the hotel is at capacity, we then will get an overbooking problem and will have to compensate for the guests. Overall, we will aim to improve the accuracy as much as possible and keep a healthy balance of specificity and sensitivity trade-off.
+
 ### Logistic Regression
 
 ```{r warning = FALSE}
-set.seed(3245)
-# Model train
-logit <- train(cancelled ~., data = classTrain,
-               method = "glm",
-               trControl = ctrl,
-               family = "binomial")
-saveRDS(logit, "models/classification/logit.rds")
+# set.seed(3245)
+# # Model train
+# logit <- train(cancelled ~., data = classTrain,
+#                method = "glm",
+#                trControl = ctrl,
+#                family = "binomial")
+# saveRDS(logit, "models/classification/logit.rds")
 
 # Model results
+logit <- read_rds("models/classification/logit.rds")
 logit
 ```
 
-### Bayes Classfiers
+With Logistic Regression model, we improved the accuracy by 6% compared to the baseline model. Considering that it is not a very computationally intensive training, this could be a great model for our problem. We will check the model's performance on test data and see whether the model actually gives better results than the baseline model.
+
+```{r}
+test_results$logit <- predict(logit, classTest)
+confusionMatrix(test_results$logit, test_results$test)
+```
+
+The Logistic Regression performs very well on the test data set, with 98% of accuracy and increased specificity to 86% while sensitivity trade-off is only around 0.4%. We can modify the threshold to improve this.
+
+```{r}
+test_results$logit <- predict(logit, classTest, type = "prob") %>% pull(Yes)
+test_results$logit <- ifelse(test_results$logit > 0.4, "Yes", "No") %>% factor(c("Yes", "No"), levels = c("Yes", "No"))
+confusionMatrix(test_results$logit, test_results$test)
+```
+
+It seems that at threshold of 0.4 to be classified as positive cancellation prediction, we get the best model with accuracy of 0.98 and increasing specificity slightly by 1% while maintaining sensitivity.
+
+### Bayes Classifiers
 
 ```{r}
 # Model train
