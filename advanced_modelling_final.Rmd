@@ -410,14 +410,28 @@ trees <- read_rds("models/classification/trees.rds")
 trees
 ```
 
+Decision Trees model seems to have better performance than Logistic Regression model, at least on train data set. The best performing model was set at cp = 0.0128. We have test a wide range below and beyond this parameter, therefore, we would not need futher tuning for the model.
+
 ```{r}
 plot(trees)
 ```
+
+We can see better wiwth the graph that the best performing models are between 0.01 and 0.02. We could potentially tune with smaller fractions for complexity but it will not improve the better by a significant amount.
 
 ```{r}
 test_results$trees <- predict(trees, classTest)
 confusionMatrix(test_results$trees, test_results$test)
 ```
+
+On test data set, the model performs not much better than Logistic Regression model. We will redefine the threshold to maximize the performance.
+
+```{r}
+test_results$trees <- predict(trees, classTest, type = "prob") %>% pull(No)
+test_results$trees <- ifelse(test_results$trees > 0.8, "No", "Yes") %>% factor(c("Yes", "No"), levels = c("Yes", "No"))
+confusionMatrix(test_results$trees, test_results$test)
+```
+
+We can set a high threshold around 0.8 to increase the specificity to 60%. With this threshold, we do get a less accuracy rate and trade off around 5% of sensitivity. In practice, we would need to calculate the potential opportunity loss and gain in revenue and the current capacity of the hotel in order to justify the decision.
 
 ### Random Forests
 
