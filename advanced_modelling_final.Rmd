@@ -611,7 +611,24 @@ importantVar %>%
   theme_classic()
 ```
 
-If we look at the important variables within the models, we can see that for all models, Lowest Qualified Rate (lqr) tends to be the most significant variable in predicting a reservation's cancellation. The lowest qualified rate is the lowest rate that the client found through their platform that is used to benchmark their negotiated rates against the market (<https://data.nasdaq.com/databases/CHB#anchor-coverage>). Some other significant variables are lead time (time between check booking date and check in date), number of previous cancellations from the client (client_cancellation), and commission status of the hotel reservered (start_commission_info). Wecan hypothesize that clients might be inclined to cancel as they find better rates on their platform, especially when they have a lot of lead time. This could also be a pattern of booking for some clients as past cancellation is important for predicting their decision to cancel. Of course, if a client has never cancelled, there is little indication that they would start doing it.
+If we look at the important variables within the models, we can see that for all models, Lowest Qualified Rate (lqr) tends to be the most significant variable in predicting a reservation's cancellation. The lowest qualified rate is the lowest rate that the client found through their platform that is used to benchmark their negotiated rates against the market (<https://data.nasdaq.com/databases/CHB#anchor-coverage>). Some other significant variables are lead time (time between check booking date and check in date), number of previous cancellations from the client (client_cancellation), and commission status of the hotel reservered (start_commission_info). We can hypothesize that clients might be inclined to cancel as they find better rates on their platform, especially when they have a lot of lead time. This could also be a pattern of booking for some clients as past cancellation is important for predicting their decision to cancel. Of course, if a client has never cancelled, there is little indication that they would start doing it.
+
+## Value Extraction
+
+```{r}
+value <- classTest %>% 
+  select(nightly_rate_usd, cancelled) %>% 
+  cbind(., pred = test_results$gbm) %>% 
+  mutate(nightly_rate_usd = inverse_transform(nightly_rate_usd),
+         base = "No",
+         correct_base = ifelse(cancelled == base, 1,0),
+         correct_pred = ifelse(cancelled ==  pred , 1,0))
+
+# Compare value
+(value %>% filter(correct_base == 1) %>% pull(nightly_rate_usd) %>% sum()) - (value %>% filter(correct_pred == 1) %>% pull(nightly_rate_usd) %>% sum())
+```
+
+With Gradient Boosting Machine model, although the improvement is small in percentage, it has bigger implication for the hotels in terms of revenue opportunities in practice. For example, if we compare the prediction of baseline, that is assuming no cancellation, and the prediction of the model, we can see that with the base model, we have a total opportunity lost of \$6,545 per night for all hotels. This is also without adjusting the threshold for the Gradient Boosting Machine model as we have seen before that depending on the objective between maximizing specificity and sensitivity, we could further enhance the prediction to identify more cancellations while keeping overbooking chance low.
 
 # Regression
 
