@@ -1006,15 +1006,10 @@ rf
 On training the model using Random Forest, we first tune the model with mtry from 2 to 4, splitrule = variance and min.node.size from 1 to 4. The best performing model was at mtry = 4 and min.node.size = 2, with RMSE around 0.84 and R^2^ around 0.40. This is not better than the best performing models that we have so far. We will further tune the model to improve its performance.
 
 ```{r}
-plot(rf)w
+plot(rf)
 ```
 
 The model performs best with 4 randomly selected predictors and min.node.size = 2. We, therefore, will tune the model with a higher number of maximum randomly selected predictors to see whether the performance of the model improves.
-
-```{r}
-impVar <- varImp(rf)
-plot(impVar)
-```
 
 ```{r}
 # rfGrid <- expand.grid(
@@ -1098,24 +1093,42 @@ On test data, Gradient Boosting Machine remains the best-performing model out of
 ### Neural Networks
 
 ```{r}
-nn <- train(nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number , # Removed some features with many levels
-            data = regTrain,
-            method = "neuralnet",
-            trControl = ctrl,
-            preProcess = c("nzv"),
-            tuneGrid = expand.grid(layer1 = c(4, 2),
-                                   layer2 = c(2, 1, 0),
-                                   layer3 = c(0))
-)
-saveRDS(nn, "models/regression/nn.rds")
+# nn <- train(nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number , # Removed some features with many levels
+#             data = regTrain,
+#             method = "neuralnet",
+#             trControl = ctrl,
+#             preProcess = c("nzv"),
+#             tuneGrid = expand.grid(layer1 = c(4, 2),
+#                                    layer2 = c(2, 1, 0),
+#                                    layer3 = c(0))
+# )
+# saveRDS(nn, "models/regression/nn.rds")
 ```
 
 ```{r}
-test_results$nn <- predict(nn, regTest)
-
-postResample(pred = test_results$nn,  obs = test_results$test)
+# test_results$nn <- predict(nn, regTest)
+# 
+# postResample(pred = test_results$nn,  obs = test_results$test)
 ```
 
 ### Ensemble
+
+```{r}
+apply(test_results[-1], 2, function(x) mean(abs(x - test_results$test)))
+```
+
+All of the models, Gradient Boosting Machine gives us the lowest error (0.44) on testing data while the worst performer is Lasso (0.69). The best 3 models that we will use for the ensemble model will be:
+
+1.  Gradient Boosting Machine
+2.  Random Forest
+3.  Elastic Net
+
+```{r}
+test_results$comb = (test_results$gb + test_results$rf + test_results$eNet)/3
+
+postResample(pred = test_results$comb,  obs = test_results$test)
+```
+
+The ensemble model still performs a little less well than the Gradient Boosting Machine alone. However, the data set that we had acquired is just a small sample and, therefore, the best-performing model is subjected to change as we predict on more new data. For value extraction in our case, we will proceed to use only the Gradient Boosting Machine Model as it is our current best model.
 
 ## Prediction
