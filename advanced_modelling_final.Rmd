@@ -878,9 +878,9 @@ plot(impVar)
 
 ```{r}
 # rfGrid <- expand.grid(
-#   .mtry = seq(4,8),
+#   .mtry = seq(6,12),
 #   .splitrule = c("variance", "extratrees"),
-#   .min.node.size = seq(1,6)
+#   .min.node.size = seq(1,3)
 # )
 # 
 # rf2 <- train(modelL, data = regTrain,
