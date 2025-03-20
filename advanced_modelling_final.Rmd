@@ -548,6 +548,37 @@ At threshold around 0.61, we obtain a model with 92% accuracy and improved the s
 # nn
 ```
 
+## Summary
+
+```{r}
+# Set at same threshold to compare
+test_results$logit <- predict(logit, classTest)
+test_results$knn <- predict(knn, classTest)
+test_results$trees <- predict(trees, classTest)
+test_results$rf <- predict(rf, classTest)
+test_results$gbm <- predict(gbm, classTest)
+
+summary_performance <- data.frame(
+  logit = confusionMatrix(test_results$logit, test_results$test)$overall,
+  knn = confusionMatrix(test_results$knn, test_results$test)$overall,
+  trees = confusionMatrix(test_results$trees, test_results$test)$overall,
+  rf = confusionMatrix(test_results$rf, test_results$test)$overall,
+  gbm = confusionMatrix(test_results$gbm, test_results$test)$overall
+) %>% 
+  t(.) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var="Model")
+
+# Visualization
+ggplot(summary_performance, aes(x = Accuracy, y = reorder(Model, Accuracy))) +
+  geom_point() +
+  geom_errorbar(aes(xmin = AccuracyLower, xmax = AccuracyUpper), width = 0.1) +
+  labs(x = "Accuracy", y = "Model",
+       title = "Best Performing Model Based on Accuracy: GBM (93.1%)") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5))
+```
+
 # Regression
 
 The other objective that we had was to predict the nightly rate (in USD) for these reservations. With the predictions, we can see whether the rates of the bookings were under or over valued, helping the hotels to better set price and capture more revenue.
