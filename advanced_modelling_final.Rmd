@@ -276,6 +276,16 @@ transformation %>%
   theme_classic()
 ```
 
+```{r}
+# Inverse function for transformation
+inverse_transform <- function(data) {
+  unscaled <- data * 0.109 + 0.448 #scale and center attributes of nightly_rate_usd
+  unnormalised <- unscaled * (log(max(booking_data$nightly_rate_usd) +1) - log(min(booking_data$nightly_rate_usd) +1)) + log(min(booking_data$nightly_rate_usd)+1)
+  unlogged <- exp(unnormalised) -1
+  return(unlogged)
+}
+```
+
 ### Final Dataframe
 
 ```{r}
@@ -608,13 +618,6 @@ If we look at the important variables within the models, we can see that for all
 The other objective that we had was to predict the nightly rate (in USD) for these reservations. With the predictions, we can see whether the rates of the bookings were under or over valued, helping the hotels to better set price and capture more revenue.
 
 We will first run a multi-regression model to select some important features that contribute the most to explaining the variance in the nightly rates. After that, we will create 2 model formulas, one with lower complexity (less variables used for predictions) and the other with higher complexity (more variables). We will then train various statistical and machine learning models to finally compare and identify the best performing models.
-
-```{r}
-# inverse log
-# unscaled <- classTrain$nightly_rate_usd * 0.109 + 0.448
-# unnormalised <- unscaled * (log(max(booking_data$nightly_rate_usd) +1) - log(min(booking_data$nightly_rate_usd) +1)) + log(min(booking_data$nightly_rate_usd)+1)
-# unlogged <- exp(unnormalised) -1
-```
 
 ## Data Splitting
 
@@ -1207,3 +1210,36 @@ importantVar %>%
 For all of our models, on average, hotel_longitude has the highest level of importance in predicting nightly rate, hotel_country is also on the top 10 list, therefore, the location of the hotel might be one critical component influencing the rate of the bookings. Additional services such free_breakfast also has high impact on the nightly rate according to the models. It is quite usual that bookings become more expensive when meals are included. Hotel's stars also seem to affect the nightly rate, this is also quite common that the more stars the hotel has, the level of services and facility also goes up, hence increasing the rate of the hotel.
 
 ## Prediction
+
+```{r}
+# Prediction intervals
+y <- inverse_transform(test_results$test)
+yhat <- inverse_transform(test_results$gb)
+error <- y - yhat
+
+# Using random 10% of errors to compute noise
+set.seed(235634)
+index <- createDataPartition(error, p = 0.1, list = FALSE)
+noise <- error[index]
+
+# 90% confidence prediction intervals
+lower <- yhat[-index] + quantile(noise, 0.05, na.rm = TRUE)
+upper <- yhat[-index] + quantile(noise, 0.95, na.rm = TRUE)
+
+# Performance with intervals
+pred <- data.frame(real=y[-index], fit = yhat[-index], lower = lower, upper=upper) %>% 
+  mutate(underValued = ifelse(real < lower, 1,0) %>% as.factor(),
+         lostOp = ifelse(underValued == 1, lower - real, 0))
+
+# Visualize
+ggplot(pred, aes(x = fit, y = real)) + 
+  geom_point(aes(color = factor(underValued, levels = c(1,0)))) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.5) +
+  labs(x = "Predicted Rate", y = "Actual Rate", 
+       title = paste0("Predicted Opportunity Loss Cost per Night: $", round(sum(pred$lostOp),2))) +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+        legend.position = "none")
+```
+
+Using our best model (Gradient Boosting Machine), we could estimate the lost opportunities for bookings that were under the expected rate. To do this, we first compute a 90% confince interval by using 10% of the error data points assigned at random as noise. We then identify bookings that had a lower nightly rate than the lower bound of the interval. These rates are then added together to produce the lost nightly rate for our test data set. For our testing data set, there is an overall lost nightly rate opportunity of \$1967! Even though this is an estimate for all bookings from various hotels, we could calculate the lost rate for each hotel as well by merging with the original booking identification data.
