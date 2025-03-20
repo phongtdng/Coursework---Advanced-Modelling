@@ -332,33 +332,33 @@ The baseline model has a very high accuracy of 90%. This is normal as we have a 
 ```{r warning = FALSE}
 # set.seed(3245)
 # # Model train
-logit <- train(cancelled ~., data = classTrain,
-               method = "glm",
-               trControl = ctrl,
-               family = "binomial")
-saveRDS(logit, "models/classification/logit.rds")
+# logit <- train(cancelled ~., data = classTrain,
+#                method = "glm",
+#                trControl = ctrl,
+#                family = "binomial")
+# saveRDS(logit, "models/classification/logit.rds")
 
 # Model results
 logit <- read_rds("models/classification/logit.rds")
 logit
 ```
 
-With Logistic Regression model, we improved the accuracy by 6% compared to the baseline model. Considering that it is not a very computationally intensive training, this could be a great model for our problem. We will check the model's performance on test data and see whether the model actually gives better results than the baseline model.
+With Logistic Regression model, it seems that we did not improve the accuracy. We will check the model's performance on test data and see whether the model actually gives better results than the baseline model.
 
 ```{r}
 test_results$logit <- predict(logit, classTest)
 confusionMatrix(test_results$logit, test_results$test)
 ```
 
-The Logistic Regression performs very well on the test data set, with 98% of accuracy and increased specificity to 86% while sensitivity trade-off is only around 0.4%. We can modify the threshold to improve this.
+On test data set, the model performs a little better and improved the accuracy by 2% compared to the baseline model. The model also increased specificity to 39% while sensitivity trade-off is only around 3%. We can modify the threshold to improve this.
 
 ```{r}
-test_results$logit <- predict(logit, classTest, type = "prob") %>% pull(Yes)
-test_results$logit <- ifelse(test_results$logit > 0.4, "Yes", "No") %>% factor(c("Yes", "No"), levels = c("Yes", "No"))
+test_results$logit <- predict(logit, classTest, type = "prob") %>% pull(No)
+test_results$logit <- ifelse(test_results$logit > 0.7, "No", "Yes") %>% factor(c("Yes", "No"), levels = c("Yes", "No"))
 confusionMatrix(test_results$logit, test_results$test)
 ```
 
-It seems that at threshold of 0.4 to be classified as positive cancellation prediction, we get the best model with accuracy of 0.98 and increasing specificity slightly by 1% while maintaining sensitivity.
+It seems that at threshold between 0.6 and 0.7, we get the best model with accuracy of 91% and increase the specificity by 11% while sensitivity only decreased by 2%.
 
 ### Bayes Classifiers
 
@@ -374,36 +374,36 @@ lda
 
 ```{r}
 # Model train
-knn <- train(cancelled ~., data = classTrain,
-             method = "knn",
-             trControl = ctrl,
-             tuneGrid = expand.grid(k = seq(1, 25, by = 2)))
-saveRDS(knn, "models/classification/knn.rds")
+# knn <- train(cancelled ~., data = classTrain,
+#              method = "knn",
+#              trControl = ctrl,
+#              tuneGrid = expand.grid(k = seq(1, 25, by = 2)))
+# saveRDS(knn, "models/classification/knn.rds")
 
 # Model results
 knn <- read_rds("models/classification/knn.rds")
 knn
 ```
 
-With k-Nearest Neighbors, we get the best performing model at k = 7. However, the model does not perform any better than the baseline model. Since the kNN is more well suited for problems involving physical network, it is understandable the model did not perform well for our data set. We will evaluate again the model's performance on test data.
+With k-Nearest Neighbors, we get the best performing model at k = 11. However, the model does not perform any better than the baseline model. Since the kNN is more well suited for problems involving physical network, it is understandable the model did not perform well for our data set. We will evaluate again the model's performance on test data.
 
 ```{r}
 test_results$knn <- predict(knn, classTest)
 confusionMatrix(test_results$knn, test_results$test)
 ```
 
-Similarly to the performance on train data, the model did not improve much the accuracy of predictions compared to the baseline model. Specificity improved slightly and there is little trade-off on sensitivity but overall it is still not a good model in practice.
+Similarly to the performance on train data, the model did not improve much the accuracy of predictions compared to the baseline model. Specificity improved slightly (by 8%) and there is little trade-off on sensitivity (less than 1%) but overall it is still not a good model in practice.
 
 ### Decision Trees
 
 ```{r}
 # Model train
-trees <- train(cancelled ~., data = classTrain,
-               method = "rpart",
-               trControl = ctrl,
-               control = rpart.control(minsplit = 20, maxdepth = 10, cp=0.01),
-               tuneLength = 10)
-saveRDS(trees, "models/classification/trees.rds")
+# trees <- train(cancelled ~., data = classTrain,
+#                method = "rpart",
+#                trControl = ctrl,
+#                control = rpart.control(minsplit = 20, maxdepth = 10, cp=0.01),
+#                tuneLength = 10)
+# saveRDS(trees, "models/classification/trees.rds")
 
 # Model result
 trees <- read_rds("models/classification/trees.rds")
@@ -412,6 +412,11 @@ trees
 
 ```{r}
 plot(trees)
+```
+
+```{r}
+test_results$trees <- predict(trees, classTest)
+confusionMatrix(test_results$trees, test_results$test)
 ```
 
 ### Random Forests
