@@ -958,7 +958,7 @@ On test data, Gradient Boosting Machine remains the best-performing model out of
 ### Neural Networks
 
 ```{r}
-nn <- train(nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number + checkin_month, # Removed some features with many levels
+nn <- train(nightly_rate_usd ~ hotel_stars + amenities + agency_cancellation + hotel_cancellation + leadtime + hotel_latitude + hotel_longitude + free_breakfast + bed_type + bed_number , # Removed some features with many levels
             data = regTrain,
             method = "neuralnet",
             trControl = ctrl,
