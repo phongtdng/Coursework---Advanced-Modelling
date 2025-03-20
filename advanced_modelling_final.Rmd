@@ -374,13 +374,25 @@ lda
 
 ```{r}
 # Model train
-knn <- train(cancelled ~., data = classTrain,
-             method = "knn",
-             trControl = ctrl,
-             tuneGrid = expand.grid(k = seq(1, 25, by = 2)))
-saveRDS(knn, "models/classification/knn.rds")
+# knn <- train(cancelled ~., data = classTrain,
+#              method = "knn",
+#              trControl = ctrl,
+#              tuneGrid = expand.grid(k = seq(1, 25, by = 2)))
+# saveRDS(knn, "models/classification/knn.rds")
+
+# Model results
+knn <- read_rds("models/classification/knn.rds")
 knn
 ```
+
+With k-Nearest Neighbors, we get the best performing model at k = 7. However, the model does not perform any better than the baseline model. Since the kNN is more well suited for problems involving physical network, it is understandable the model did not perform well for our data set. We will evaluate again the model's performance on test data.
+
+```{r}
+test_results$knn <- predict(knn, classTest)
+confusionMatrix(test_results$knn, test_results$test)
+```
+
+Similarly to the performance on train data, the model did not improve much the accuracy of predictions compared to the baseline model. Specificity improved slightly and there is little trade-off on sensitivity but overall it is still not a good model in practice.
 
 ### Decision Trees
 
